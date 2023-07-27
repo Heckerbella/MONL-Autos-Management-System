@@ -1,4 +1,4 @@
-import jwt, { JwtPayload } from 'jsonwebtoken'
+import jwt, { JsonWebTokenError, JwtPayload } from 'jsonwebtoken'
 import dotenv from 'dotenv'
 
 
@@ -8,8 +8,8 @@ export const envs = result.parsed || {}
 const key = envs.TOKEN_SECRET || process.env.TOKEN_SECRET
 
 
-export function generateAccessToken(username : string) {
-    return jwt.sign({data: {username}}, key as string, { expiresIn: '1h' });
+export function generateAccessToken(email : string) {
+    return jwt.sign({data: {email}}, key as string, { expiresIn: '1h' });
 }
 
 // export function verifyAccessToken(token : string) {
@@ -24,9 +24,9 @@ export function generateAccessToken(username : string) {
 // }
 
 
-interface DecodedToken {
+export interface DecodedToken {
   data?: JwtPayload; // Adjust the JwtPayload type as per your JWT payload structure
-  error?: string;
+  error?: JsonWebTokenError;
 }
 
 export function verifyToken(token: string): DecodedToken {
@@ -34,6 +34,6 @@ export function verifyToken(token: string): DecodedToken {
     const data = jwt.verify(token, key as string) as JwtPayload;
     return { data };
   } catch (error: any) {
-    return { error: error.message };
+    return { error: error };
   }
 }

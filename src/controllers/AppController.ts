@@ -7,8 +7,6 @@ class AppController {
         try {
             await db.$connect()
             await db.user.findMany()
-            // await db.$queryRaw('SELECT 1')
-            // console.log('Prisma client is okay')
             dbStatus = true
         } catch (error) {
             dbStatus = false
