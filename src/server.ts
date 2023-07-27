@@ -1,11 +1,8 @@
 import express from 'express';
 import router from './routes';
-import dotenv from 'dotenv'
-
 import cors from 'cors'
 
-const result = dotenv.config()
-export const envs = result.parsed || {}
+
 
 
 export const PORT = process.env.PORT || 5000;

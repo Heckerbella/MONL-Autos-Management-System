@@ -1,5 +1,5 @@
 import {Role, User, CustomerType} from "@prisma/client";
-import { envs } from "../../src/server";
+import { envs } from "../../src/utils/general"
 
 const password = envs.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
 const encodedpassword = Buffer.from(password as string, 'utf8').toString("base64")

@@ -1,5 +1,9 @@
 import jwt, { JwtPayload } from 'jsonwebtoken'
-import { envs } from '../server';
+import dotenv from 'dotenv'
+
+
+const result = dotenv.config()
+export const envs = result.parsed || {}
 
 const key = envs.TOKEN_SECRET || process.env.TOKEN_SECRET
 

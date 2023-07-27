@@ -1,23 +1,4 @@
-import dotenv from 'dotenv'
-import { PrismaClient } from '@prisma/client';
-
-// Load environment variables from .env file if it exists
-const result = dotenv.config();
-
-// Check if .env file was found and loaded successfully
-if (result.error) {
-  console.error('.env file not found. Using environment variables directly.');
-}
-
-// Use DATABASE_URL from .env or environment variables
-const DATABASE_URL = result.parsed?.DATABASE_URL || process.env.DATABASE_URL;
-
-// Create Prisma client with the chosen DATABASE_URL
-const prisma = new PrismaClient({ datasources: { db: { url: DATABASE_URL } } });
-
-// export default prisma;
-
-
+import { PrismaClient } from "@prisma/client";
 
 let db: PrismaClient;
 
@@ -26,7 +7,7 @@ declare global {
 }
 
 if (!global.__db) {
-    global.__db = prisma;
+    global.__db = new PrismaClient();
 }
 
 db = global.__db;
