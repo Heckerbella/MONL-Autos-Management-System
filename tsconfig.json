@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "es2016",
+    "lib": ["ES6"],
+  
+    /* Modules */
+    "module": "commonjs",
+    // "rootDir": "src",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+  
+    /* Type Checking */
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "prisma/**/*"],
+  "exclude": ["dist"]
+}
