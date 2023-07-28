@@ -32,6 +32,36 @@ class UserController {
             res.status(401).send('You are not authorized to create a user');
         }
     }
+
+    async getUsers (req: Request, res: Response) {
+
+        const {detokenizedRole} = req.body
+        const role = await db.role.findUnique({where: {id: detokenizedRole}})
+
+        if (role && role.name == "admin") {
+            const users = await db.user.findMany({
+                where: {
+                    NOT: {
+                        roleID: 1
+                    }
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    roleID: true,
+                    role: {
+                        select: {
+                            name: true
+                        }
+                    }
+                }
+            });
+            res.status(200).send(users);
+        } else {
+            res.status(401).send('You are not authorized to create a user');
+        }
+
+    }
 }
 
 const userController = new UserController();

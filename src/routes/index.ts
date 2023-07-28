@@ -8,14 +8,15 @@ const router = express.Router();
 
 // Start
 router.get('/', (req, res) => {
-  res.send('Hello ');
+  res.send('Hello, and welcome to MONL Autos Management System Backend API.');
 });
 
 router.get('/status', appController.getStatus)
 
-router.post('/login', auth.login)
+router.post('/auth/login', auth.login)
 
-router.post('/user', auth.auth, userController.createUser)
+router.post('/users', auth.auth, userController.createUser)
+router.get('/users', auth.auth, userController.getUsers)
 
 
 export default router

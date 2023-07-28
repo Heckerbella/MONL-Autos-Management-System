@@ -67,8 +67,7 @@ class Auth {
            
             const authHeader = req.headers['authorization'];
 
-            const bearer = authHeader?.split(' ')[1];
-            console.log(bearer)
+            const bearer = (authHeader?.split(' ')[1])?.replace(/^(['"])(.*?)\1$/, '$2');
 
             if (bearer) {
                 const decodedToken: DecodedToken = verifyToken(bearer);

@@ -9,7 +9,7 @@ const key = envs.TOKEN_SECRET || process.env.TOKEN_SECRET
 
 
 export function generateAccessToken(email : string) {
-    return jwt.sign({data: {email}}, key as string, { expiresIn: '1h' });
+    return jwt.sign({data: {email}}, key as string, { expiresIn: '24h' });
 }
 
 // export function verifyAccessToken(token : string) {
