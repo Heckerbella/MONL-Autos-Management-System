@@ -20,16 +20,16 @@ class UserController {
                 if (user) {
                     // decode password
                     user.password = Buffer.from(user.password, 'base64').toString('utf8');
-                    res.status(201).send(user);
+                    res.status(201).json({data: user, msg: "User created successfully."});
                 } else {
-                    res.status(400).send('Could not create user');
+                    res.status(400).json({ error_code: 400, msg: 'Could not create user.'});
                 }
             } else {
-                res.status(400).send('Missing information');
+                res.status(400).json({error_code: 400, msg: 'Missing information.'});
             }
 
         } else {
-            res.status(401).send('You are not authorized to create a user');
+            res.status(401).json({error_code: 401, msg: 'You are not authorized to create a user.'});
         }
     }
 
@@ -56,11 +56,43 @@ class UserController {
                     }
                 }
             });
-            res.status(200).send(users);
+            res.status(200).json({data: users});
         } else {
-            res.status(401).send('You are not authorized to create a user');
+            res.status(401).json({error_code: 401, msg: 'You are not authorized to create a user.'});
         }
+    }
 
+    async getUser (req: Request, res: Response) {
+
+        const {detokenizedRole } = req.body
+        const {id} = req.params
+        const role = await db.role.findUnique({where: {id: detokenizedRole}})
+
+        if (role && role.name == "admin") {
+
+            if (id) {
+                const user = await db.user.findUnique({
+                    where: {
+                        id: parseInt(id, 10)
+                    },
+                    select: {
+                        id: true,
+                        email: true,
+                        roleID: true,
+                        role: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                });
+                res.status(200).json({data: user});
+            } else {
+                res.status(400).json({error_code: 400, msg: 'Missing information: Please provide user id parameter.'});
+            }
+        } else {
+            res.status(401).json({error_code: 401, msg: 'You are not authorized to create a user.'});
+        }
     }
 }
 

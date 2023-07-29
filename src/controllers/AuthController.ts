@@ -11,12 +11,12 @@ class Auth {
 
             const user = await db.user.findUnique({ where: { email } })
             if (!user) {
-                res.status(401).send('Invalid credentials');
+                res.status(401).json({error_code: 401, msg: 'Invalid credentials'});
             } else {
                 const encodedpassword = Buffer.from(password, 'utf8').toString("base64");
                 if (user.password === encodedpassword) {
                     const token = generateAccessToken(user.email)
-                    res.status(200).send({
+                    res.status(200).json({
                         message: 'Login successful',
                         data: {
                             id: user.id,
@@ -25,12 +25,11 @@ class Auth {
                         }
                     })
                 } else {
-                    res.status(401).send('Invalid credentials');
+                    res.status(401).json({error_code: 401, msg:'Invalid credentials'});
                 }
             }
         } catch (error) {
-            console.log("Missing information", error);
-            res.status(400).send('Bad request')
+            res.status(400).json({ error_code: 400, msg: 'Bad request'})
         }    
     }
 
@@ -75,13 +74,13 @@ class Auth {
                 if (decodedToken.error) {
                     const err: any = decodedToken.error
                     if (err instanceof jwt.JsonWebTokenError) {
-                        return res.status(401).json({ error: 'Invalid token' });
+                        return res.status(401).json({ error_code: 401, msg: 'Invalid token' });
                       } else if (err instanceof jwt.TokenExpiredError) {
-                        return res.status(401).json({ error: 'Token has expired' });
+                        return res.status(401).json({ error_code: 401, msg: 'Token has expired' });
                       } else if (err instanceof jwt.NotBeforeError) {
-                        return res.status(401).json({ error: 'Token cannot be used yet' });
+                        return res.status(401).json({ error_code: 401, msg: 'Token cannot be used yet' });
                       }
-                      return res.status(500).json({ error: 'Something went wrong' });
+                      return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
                     
                 } else {
                     const { email } = decodedToken?.data?.data ?? { email: null };
@@ -93,15 +92,15 @@ class Auth {
                             next();
                         }
                     } else {
-                        res.status(401).send('Unauthorized');
+                        res.status(401).json({error_code: 401, msg: 'Unauthorized'});
                     }
                 }
             } else {
-                res.status(401).send('Unauthorized gg');
+                    res.status(401).json({error_code: 401, msg: 'Unauthorized'});
             }
         } catch (error) {
             console.log(error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({error_code: 500, msg: 'Internal Server Error'});
         }
     }
 }
