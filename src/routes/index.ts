@@ -20,6 +20,7 @@ router.post('/auth/login', auth.login)
 // Users Section
 router.post('/users', auth.auth, userController.createUser)
 router.get('/users', auth.auth, userController.getUsers)
+router.get('/users/me', auth.auth, userController.getMe)
 router.get('/users/:id', auth.auth, userController.getUser)
 
 // Customers Section

@@ -94,6 +94,61 @@ class UserController {
             res.status(401).json({error_code: 401, msg: 'You are not authorized to create a user.'});
         }
     }
+
+    async getMe (req: Request, res: Response) {
+
+        const {detokenizedEmail } = req.body
+        try {  
+            const user =  await db.user.findUnique({where: {email: detokenizedEmail},
+                select: {
+                    id: true,
+                    email: true,
+                    roleID: true,
+                    role: {
+                        select: {
+                            name: true
+                        }
+                    }
+                }
+            })
+            
+            res.status(200).json({data: user});
+        } catch (error) {
+            res.status(500).json({error_code: 500, msg: 'Internal server error.'})
+        }
+    }
+
+    async updateUser(req: Request, res: Response) {
+        const { id } = req.params;
+        const {
+            password,
+            detokenizedRole
+        } = req.body;
+        
+        const user = await db.user.findUnique({where: {id: parseInt(id, 10)}})
+
+        if (!user) return res.status(404).json({ error_code: 404, msg: 'User not found.' });
+        const data: {[key: string]: string | number} = {}
+        if (password) {
+            data.password = Buffer.from(password as string, 'utf8').toString("base64");
+        }
+        if (detokenizedRole) {
+            data.roleID = detokenizedRole;
+        }
+
+        const updatedUser = await db.user.update({
+            where: {id: parseInt(id, 10)},
+            data
+        })
+
+        if (updatedUser) {
+            // decode password
+            // updatedUser.password = Buffer.from(updatedUser.password, 'base64').toString('utf8');
+            res.status(200).json({msg: "User password successfully."});
+        } else {
+            res.status(400).json({ error_code: 400, msg: 'Could not update user.'});
+        }
+    }
 }
 
 const userController = new UserController();
