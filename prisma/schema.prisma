@@ -43,6 +43,9 @@ model Customer {
   customerTypeID Int
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  jobs           Job[]
+  invoices       Invoice[]
+  estimates      Estimate[]
 }
 
 model CustomerType {
@@ -62,10 +65,12 @@ model Vehicle {
   engineNo      String      @unique
   chasisNo      String      @unique
   licensePlate  String      @unique
+  mileage       Int
   vehicleType   VehicleType @relation(fields: [vehicleTypeID], references: [id])
   vehicleTypeID Int
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  jobs          Job[]
 }
 
 model VehicleType {
@@ -74,4 +79,49 @@ model VehicleType {
   vehicles  Vehicle[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+}
+
+model JobType {
+  id   Int    @id @default(autoincrement())
+  name String
+  jobs Job[]
+}
+
+model JobMaterial {
+  id          Int    @id @default(autoincrement())
+  productName String
+  productCost String
+}
+
+model Job {
+  id           Int       @id @default(autoincrement())
+  customer     Customer  @relation(fields: [customerID], references: [id])
+  customerID   Int
+  vehicle      Vehicle   @relation(fields: [vehicleID], references: [id])
+  vehicleID    Int
+  jobType      JobType   @relation(fields: [jobTypeID], references: [id])
+  jobTypeID    Int
+  deliveryDate DateTime?
+  invoice      Invoice?
+  estimate     Estimate?
+}
+
+model Invoice {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  invoiceNo  Int      @default(autoincrement())
+  customer   Customer @relation(fields: [customerID], references: [id])
+  customerID Int
+  job        Job      @relation(fields: [jobID], references: [id])
+  jobID      Int      @unique
+}
+
+model Estimate {
+  id         Int      @id @default(autoincrement())
+  date       DateTime
+  estimateNo Int      @default(autoincrement())
+  customer   Customer @relation(fields: [customerID], references: [id])
+  customerID Int
+  job        Job      @relation(fields: [jobID], references: [id])
+  jobID      Int      @unique
 }

@@ -24,6 +24,17 @@ export const roles = [
     }
 ]
 
+export const jobTypes = [
+    {
+        id: 1,
+        name: "Type 1"
+    },
+    {
+        id: 2,
+        name: "Type 2"
+    }
+]
+
 
 
 export const customerTypes = [

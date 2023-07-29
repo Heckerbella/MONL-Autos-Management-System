@@ -4,6 +4,7 @@ import auth from "../controllers/AuthController"
 import userController from "../controllers/UserController"
 import customerController from "../controllers/CustomerController";
 import vehicleController from "../controllers/VehicleController";
+import jobController from "../controllers/JobController";
 
 
 const router = express.Router();
@@ -49,6 +50,15 @@ customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleControl
 customerRouter.patch('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.updateCustomerVehicle)
 customerRouter.delete('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.deleteCustomerVehicle)
 
+// Job Section
+const jobRouter = express.Router();
+router.use('/jobs', jobRouter);
+jobRouter.post('/', auth.auth, jobController.createJob)
+jobRouter.get('/', auth.auth, jobController.getJobs)
+jobRouter.get('/types', auth.auth, jobController.getJobTypes)
+jobRouter.get('/:id', auth.auth, jobController.getJob)
+jobRouter.patch('/:id', auth.auth, jobController.updateJob)
+jobRouter.delete('/:id', auth.auth, jobController.deleteJob)
 
 
 export default router

@@ -1,5 +1,5 @@
 import { db } from "../../src/utils/prismaClient";
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 
 class UserController {
     async createUser (req: Request, res: Response) {
@@ -8,23 +8,30 @@ class UserController {
         const role = await db.role.findUnique({where: {id: detokenizedRole}})
 
         if (role && role.name == "admin") {
-            if (email && password) {
+            try {
+                if (email && password) {
+                    let user = await db.user.findUnique({where : { email}})
+
+                    if (user) return res.status(400).json({ error_code: 400, msg: 'User already exists.' })
     
-                const user = await db.user.create({data: {
-                    email: email as string,
-                    password: Buffer.from(password as string, 'utf8').toString("base64"),
-                    roleID: 2
-                }})
-        
-                if (user) {
-                    // decode password
-                    user.password = Buffer.from(user.password, 'base64').toString('utf8');
-                    res.status(201).json({data: user, msg: "User created successfully."});
+                     user = await db.user.create({data: {
+                        email: email as string,
+                        password: Buffer.from(password as string, 'utf8').toString("base64"),
+                        roleID: 2
+                    }})
+            
+                    if (user) {
+                        // decode password
+                        user.password = Buffer.from(user.password, 'base64').toString('utf8');
+                        res.status(201).json({data: user, msg: "User created successfully."});
+                    } else {
+                        res.status(400).json({ error_code: 400, msg: 'Could not create user.'});
+                    }
                 } else {
-                    res.status(400).json({ error_code: 400, msg: 'Could not create user.'});
-                }
-            } else {
-                res.status(400).json({error_code: 400, msg: 'Missing information.'});
+                    res.status(400).json({error_code: 400, msg: 'Missing information.'});
+                }                
+            } catch (error) {
+                return res.status(500).json({error_code: 500, msg: 'Internal server error.'})
             }
 
         } else {

@@ -1,6 +1,6 @@
 // import { PrismaClient } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
-import { user, roles, customerTypes, vehicleTypes } from "./data";
+import { user, roles, customerTypes, vehicleTypes, jobTypes } from "./data";
 
 
 async function seed() {
@@ -22,9 +22,20 @@ async function seed() {
         });
     }
 
+    for (const type of jobTypes) {
+        await db.jobType.create({
+            data: type
+        })
+    }
+
     await db.user.create({
         data: user
     });
+
+    // Set the starting value of the auto-incremented InvoiceNo and EstimateNo to 100000
+    await db.$queryRaw`ALTER SEQUENCE "Invoice_invoiceNo_seq" RESTART WITH 100000`;
+    await db.$queryRaw`ALTER SEQUENCE "Estimate_estimateNo_seq" RESTART WITH 100000`;
+
 
 }
 

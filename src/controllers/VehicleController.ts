@@ -1,5 +1,5 @@
 import { db } from "../../src/utils/prismaClient";
-import { Request, Response, NextFunction } from "express";
+import { Request, Response } from "express";
 
 class VehicleController {
     async createVehicle (req: Request, res: Response) {
@@ -10,11 +10,12 @@ class VehicleController {
             engine_no,
             chassis_no,
             license_plate,
-            vehicle_type_id
+            vehicle_type_id,
+            mileage
         } = req.body
 
         if (
-            !owner_id || !model_no || !model_name || !engine_no || !chassis_no || !license_plate || !vehicle_type_id
+            !owner_id || !model_no || !model_name || !engine_no || !chassis_no || !license_plate || !vehicle_type_id || !mileage
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
@@ -38,7 +39,8 @@ class VehicleController {
                     chasisNo: chassis_no,
                     licensePlate: license_plate,
                     ownerID: parseInt(owner_id, 10),
-                    vehicleTypeID: parseInt(vehicle_type_id, 10)
+                    vehicleTypeID: parseInt(vehicle_type_id, 10),
+                    mileage
                 }
             })
 
