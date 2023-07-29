@@ -141,6 +141,15 @@ class UserController {
             res.status(400).json({ error_code: 400, msg: 'Could not update user.'});
         }
     }
+
+        async getUserRoles (req: Request, res: Response) {
+        try {
+            const userRoles = await db.role.findMany();
+            res.status(200).json({data: userRoles});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get user roles.' });
+        }
+    }
 }
 
 const userController = new UserController();

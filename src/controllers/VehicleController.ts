@@ -314,6 +314,15 @@ class VehicleController {
         }
     }
 
+    async getVehicleTypes (req: Request, res: Response) {
+        try {
+            const vehicleTypes = await db.vehicleType.findMany();
+            res.status(200).json({data: vehicleTypes});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });
+        }
+    }
+
 }
 
 const vehicleController = new VehicleController();

@@ -156,6 +156,15 @@ class CustomerController {
         }
     }
 
+    async getCustomerTypes (req: Request, res: Response) {
+        try {
+            const customerTypes = await db.customerType.findMany();
+            res.status(200).json({data: customerTypes});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get customer types.' });
+        }
+    }
+
 }
 
 const customerController = new CustomerController();
