@@ -24,13 +24,33 @@ export const roles = [
     }
 ]
 
+
+
 export const customerTypes = [
     {
         id: 1,
-        type: 'Corporate'
+        name: 'Corporate'
     },
     {
         id: 2,
-        type: "Individual"
+        name: "Individual"
     }
+]
+
+export const vehicleTypes = [
+    {
+        id: 1,
+        name: 'Saloon Car'
+    },
+    {
+        id: 2,
+        name: "SUV"
+    },
+    {
+        id: 3,
+        name: "Truck"
+    },    {
+        id: 4,
+        name: "Bus"
+    },
 ]

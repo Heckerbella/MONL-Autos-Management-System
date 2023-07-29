@@ -3,6 +3,7 @@ import appController from "../controllers/AppController";
 import auth from "../controllers/AuthController"
 import userController from "../controllers/UserController"
 import customerController from "../controllers/CustomerController";
+import vehicleController from "../controllers/VehicleController";
 
 
 const router = express.Router();
@@ -17,18 +18,33 @@ router.get('/status', appController.getStatus)
 // Auth Section
 router.post('/auth/login', auth.login)
 
-// Users Section
-router.post('/users', auth.auth, userController.createUser)
-router.get('/users', auth.auth, userController.getUsers)
-router.get('/users/me', auth.auth, userController.getMe)
-router.get('/users/:id', auth.auth, userController.getUser)
+// User Section
+const userRouter = express.Router();
+router.use('/users', userRouter);
+userRouter.post('/', auth.auth, userController.createUser)
+userRouter.get('/', auth.auth, userController.getUsers)
+userRouter.get('/me', auth.auth, userController.getMe)
+userRouter.get('/:id', auth.auth, userController.getUser)
 
-// Customers Section
-router.post('/customers', auth.auth, customerController.createCustomer)
-router.get('/customers', auth.auth, customerController.getCustomers)
-router.get('/customers/:id', auth.auth, customerController.getCustomer)
-router.patch('/customers/:id', auth.auth, customerController.updateCustomer)
-router.delete('/customers/:id', auth.auth, customerController.deleteCustomer)
+// Customer Section
+const customerRouter = express.Router();
+router.use('/customers', customerRouter);
+customerRouter.post('/', auth.auth, customerController.createCustomer)
+customerRouter.get('/', auth.auth, customerController.getCustomers)
+customerRouter.get('/:id', auth.auth, customerController.getCustomer)
+customerRouter.patch('/:id', auth.auth, customerController.updateCustomer)
+customerRouter.delete('/:id', auth.auth, customerController.deleteCustomer)
+
+// Vehicle Section
+const vehicleRouter = express.Router();
+router.use('/vehicles', vehicleRouter);
+vehicleRouter.post('/', auth.auth, vehicleController.createVehicle)
+vehicleRouter.get('/', auth.auth, vehicleController.getVehicles)
+vehicleRouter.get('/:id', auth.auth, vehicleController.getVehicle)
+customerRouter.get('/:customerID/vehicles', auth.auth, vehicleController.getCustomerVehicles)
+customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.getCustomerVehicle)
+customerRouter.patch('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.updateCustomerVehicle)
+customerRouter.delete('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.deleteCustomerVehicle)
 
 
 export default router

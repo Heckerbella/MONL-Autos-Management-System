@@ -35,9 +35,9 @@ class CustomerController {
                     }
                     customer = await db.customer.create({
                         data: {
-                            first_name,
-                            last_name,
-                            other_name,
+                            firstName: first_name,
+                            lastName: last_name,
+                            otherName: other_name,
                             email,
                             billingAddress: billing_address,
                             companyContact: company_contact,

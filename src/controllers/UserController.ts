@@ -1,4 +1,3 @@
-import { User } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response, NextFunction } from "express";
 
@@ -119,25 +118,18 @@ class UserController {
     }
 
     async updateUser(req: Request, res: Response) {
-        const { id } = req.params;
-        const {
-            password,
-            detokenizedRole
-        } = req.body;
+        const {detokenizedEmail, password } = req.body
         
-        const user = await db.user.findUnique({where: {id: parseInt(id, 10)}})
+        const user = await db.user.findUnique({where: {email: detokenizedEmail}})
 
         if (!user) return res.status(404).json({ error_code: 404, msg: 'User not found.' });
         const data: {[key: string]: string | number} = {}
         if (password) {
             data.password = Buffer.from(password as string, 'utf8').toString("base64");
         }
-        if (detokenizedRole) {
-            data.roleID = detokenizedRole;
-        }
 
         const updatedUser = await db.user.update({
-            where: {id: parseInt(id, 10)},
+            where: {email: detokenizedEmail},
             data
         })
 
