@@ -14,7 +14,14 @@ class CustomerController {
             phone,
             lga,
             city,
-            customer_type_id
+            customer_type_id,
+            model_no,
+            model_name,
+            engine_no,
+            chassis_no,
+            license_plate,
+            vehicle_type_id,
+            mileage
         } = req.body;
 
         if (
@@ -24,6 +31,15 @@ class CustomerController {
             } else if ((company_name  && !company_contact) || (!company_name && company_contact)) {
                 return res.status(400).json({ error_code: 400, msg: 'Company information is incomplete.' });
             } else {
+
+                if (
+                    (model_no || model_name || engine_no || chassis_no || license_plate || vehicle_type_id || mileage) &&
+                    (!(model_no && model_name && engine_no && chassis_no && license_plate && vehicle_type_id && mileage))
+                ) {
+                    // At least one property is present, and at least one of the rest is not present
+                    return res.status(400).json({ error_code: 400, msg: 'Vehicle information is incomplete.' });
+                }
+
                 try {
                     let customer = await db.customer.findUnique({where: {email}})
                     let customerType = await db.customerType.findUnique({where: {id: customer_type_id}})
@@ -35,6 +51,28 @@ class CustomerController {
                     if (!customerType) {
                         return res.status(400).json({ error_code: 400, msg: 'Customer type does not exist.' });
                     }
+
+                    if (license_plate) {
+                        const vehicleInDB = await db.vehicle.findUnique({where: {licensePlate: license_plate}})
+                        if (vehicleInDB) {
+                            return res.status(400).json({ error_code: 400, msg: 'Vehicle already exists.' });
+                        }
+                    }
+
+                    if (engine_no) {
+                        const vehicleInDB = await db.vehicle.findUnique({where: {engineNo: engine_no}})
+                        if (vehicleInDB) {
+                            return res.status(400).json({ error_code: 400, msg: 'Vehicle already exists.' });
+                        }
+                    }
+
+                    if (chassis_no) {
+                        const vehicleInDB = await db.vehicle.findUnique({where: {chasisNo: chassis_no}})
+                        if (vehicleInDB) {
+                            return res.status(400).json({ error_code: 400, msg: 'Vehicle already exists.' });
+                        }
+                    }
+
                     customer = await db.customer.create({
                         data: {
                             firstName: first_name,
@@ -52,7 +90,25 @@ class CustomerController {
                     })
         
                     if (customer) {
-                        res.status(201).json({data: customer, msg: "Customer Created Sucessfully."});
+                        let data: {[key: string]: string | number | null | Date} = {}
+                        data = {...customer}
+                        if (model_no) {
+                            const vehicle: {[key: string]: number | string | Date | null} = await db.vehicle.create({
+                                data: {
+                                    modelNo: model_no,
+                                    modelName: model_name,
+                                    engineNo: engine_no,
+                                    chasisNo: chassis_no,
+                                    licensePlate: license_plate,
+                                    ownerID: customer.id,
+                                    vehicleTypeID: parseInt(vehicle_type_id, 10),
+                                    mileage
+                                }
+                            })
+                            vehicle["vehichleID"] = vehicle.id
+                            data = {...vehicle, ...data}
+                        }
+                        res.status(201).json({data, msg: "Customer Created Sucessfully."});
                     }
                     
                 } catch (error) {
