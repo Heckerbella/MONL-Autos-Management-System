@@ -5,6 +5,8 @@ import userController from "../controllers/UserController"
 import customerController from "../controllers/CustomerController";
 import vehicleController from "../controllers/VehicleController";
 import jobController from "../controllers/JobController";
+import invoiceController from "../controllers/InvoiceController";
+import estimateController from "../controllers/EstimateController";
 
 
 const router = express.Router();
@@ -61,4 +63,23 @@ jobRouter.patch('/:id', auth.auth, jobController.updateJob)
 jobRouter.delete('/:id', auth.auth, jobController.deleteJob)
 
 
+// Invoice Section
+const invoiceRouter = express.Router();
+router.use('/invoices', invoiceRouter);
+invoiceRouter.post('/', auth.auth, invoiceController.createInvoice)
+invoiceRouter.get('/', auth.auth, invoiceController.getInvoices)
+invoiceRouter.get('/:id', auth.auth, invoiceController.getInvoice)
+invoiceRouter.patch('/:id', auth.auth, invoiceController.updateInvoice)
+invoiceRouter.delete('/:id', auth.auth, invoiceController.deleteInvoice)
+
+
+
+// Invoice Section
+const estimateRouter = express.Router();
+router.use('/estimates', estimateRouter);
+estimateRouter.post('/', auth.auth, estimateController.createEstimate)
+estimateRouter.get('/', auth.auth, estimateController.getEstimates)
+estimateRouter.get('/:id', auth.auth, estimateController.getEstimate)
+estimateRouter.patch('/:id', auth.auth, estimateController.updateEstimate)
+estimateRouter.delete('/:id', auth.auth, estimateController.deleteEstimate)
 export default router

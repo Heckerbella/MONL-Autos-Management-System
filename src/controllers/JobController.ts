@@ -1,14 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
+import { isValidDate } from "../utils/general";
 
 class JobController {
-    
-    isValidDate (dateString: string) {
-        const timestamp = Date.parse(dateString);
-        return !isNaN(timestamp);
-    }
-
     async getJobTypes (req: Request, res: Response) {
         try {
             const jobTypes = await db.jobType.findMany();
@@ -18,7 +13,7 @@ class JobController {
         }
     }
 
-    createJob = async (req: Request, res: Response) => {
+    async createJob (req: Request, res: Response) {
         const {
             job_type_id,
             customer_id,
@@ -34,7 +29,7 @@ class JobController {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
 
-        if (delivery_date && !this.isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
+        if (delivery_date && !isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
 
         try {
             const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
@@ -144,7 +139,7 @@ class JobController {
         }
     }
 
-    updateJob = async (req: Request, res: Response) => {
+    async updateJob (req: Request, res: Response) {
         // async updateJob (req: Request, res: Response) {
         const { id } = req.params;
         const {delivery_date} = req.body;
@@ -155,7 +150,7 @@ class JobController {
         }
 
 
-        if (!this.isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Invalid date. Please set date in the format YYYY-MM-DD' });
+        if (!isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Invalid date. Please set date in the format YYYY-MM-DD' });
 
         try {
             const job = await db.job.update({

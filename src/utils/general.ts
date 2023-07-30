@@ -37,3 +37,8 @@ export function verifyToken(token: string): DecodedToken {
     return { error: error };
   }
 }
+
+export function isValidDate (dateString: string) {
+  const timestamp = Date.parse(dateString);
+  return !isNaN(timestamp);
+}
