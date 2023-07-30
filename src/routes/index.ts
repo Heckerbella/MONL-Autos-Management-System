@@ -8,6 +8,7 @@ import {
   jobController,
   invoiceController,
   estimateController,
+  dashboardController
 } from '../controllers';
 
 const router = express.Router();
@@ -23,6 +24,9 @@ router.get('/status', appController.getStatus)
 // Auth Section
 router.post('/auth/login', auth.login)
 
+
+// Dashboard Section
+router.get('/dashboard', auth.auth, dashboardController.getDashboardData)
 
 // User Section
 const userRouter = express.Router();
