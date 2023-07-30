@@ -38,6 +38,8 @@ model Customer {
   billingAddress String
   companyContact String?
   companyName    String?
+  lga            String?
+  city           String?
   vehicles       Vehicle[]
   customerType   CustomerType @relation(fields: [customerTypeID], references: [id])
   customerTypeID Int

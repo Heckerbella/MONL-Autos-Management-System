@@ -12,6 +12,8 @@ class CustomerController {
             company_contact,
             company_name,
             phone,
+            lga,
+            city,
             customer_type_id
         } = req.body;
 
@@ -43,6 +45,8 @@ class CustomerController {
                             companyContact: company_contact,
                             companyName: company_name,
                             phone,
+                            lga,
+                            city,
                             customerTypeID: parseInt(customer_type_id, 10)
                         }
                     })
@@ -92,6 +96,8 @@ class CustomerController {
             company_contact,
             company_name,
             phone,
+            lga,
+            city,
             customer_type_id
         } = req.body;
         
@@ -126,6 +132,12 @@ class CustomerController {
         if (phone) {
             data.phone = phone;
         }
+        if (lga) {
+            data.lga = lga;
+        }
+        if (city) {
+            data.city = city;
+        }
         if (customer_type_id) {
             const customerType = await db.customerType.findUnique({where: {id: customer_type_id}})
             if (!customerType) return res.status(400).json({ error_code: 400, msg: 'Customer type does not exist.' });
@@ -137,7 +149,7 @@ class CustomerController {
                 where: { id: parseInt(id, 10) },
                 data
             });
-            res.status(200).json(updatedCustomer);
+            res.status(200).json({data: updatedCustomer, msg: "Customer Updated Sucessfully."});
         } catch (error) {
             console.error(error)
             res.status(400).json({ error_code: 400, msg: 'Could not update customer.' });
