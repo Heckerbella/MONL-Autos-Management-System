@@ -92,7 +92,7 @@ model JobType {
 model JobMaterial {
   id          Int      @id @default(autoincrement())
   productName String
-  productCost String
+  productCost Decimal  @default(0) @db.Decimal(10, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

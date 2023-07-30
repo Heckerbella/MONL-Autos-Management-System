@@ -3,7 +3,8 @@ import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { isValidDate } from "../utils/general";
 
-class JobController {
+
+class Job  {
     async getJobTypes (req: Request, res: Response) {
         try {
             const jobTypes = await db.jobType.findMany();
@@ -193,7 +194,103 @@ class JobController {
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
     }
+
 }
+
+
+class JobMaterial {
+    async createMaterial (req: Request, res: Response) {
+        const {name, cost} = req.body;
+    
+        if (!name || !cost) return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
+    
+        try {
+            const jobMaterial = await db.jobMaterial.create({
+                data: {
+                    productName: name,
+                    productCost: parseFloat(cost)
+                }
+            })
+            res.status(201).json({data: jobMaterial, msg: "Job material created successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not create job material.' });
+        }
+    }
+
+    async getMaterials (req: Request, res: Response) {
+        try {
+            const materials = await db.jobMaterial.findMany();
+            res.status(200).json({data: materials});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
+        }
+    }
+
+    async getMaterial (req: Request, res: Response) {
+        const { id } = req.params;
+        try {
+            const jobMaterial = await db.jobMaterial.findUnique({ where: { id: parseInt(id, 10) } });
+            if (!jobMaterial) {
+                return res.status(404).json({ error_code: 404, msg: 'Job material not found.' });
+            }
+            res.status(200).json({data: jobMaterial});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get job material.' });
+        }
+    }
+
+    async updateMaterial (req: Request, res: Response) {
+        const { id } = req.params;
+        const {name, cost} = req.body;
+
+        const jobMaterial = await db.jobMaterial.findUnique({where: {id: parseInt(id, 10)}})
+        if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Job material not found.' });
+        
+        try {
+            if (!cost) return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
+            const jobMaterial = await db.jobMaterial.update({
+                where: {
+                    id: parseInt(id, 10)
+                },
+                data: {
+                    productCost: parseFloat(cost)
+                }
+            })
+
+            res.status(200).json({data: jobMaterial, msg: "Job material updated successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not update job material.' });
+        }
+    }
+
+    async deleteMaterial (req: Request, res: Response) {
+        const {id} = req.params
+
+        const jobMaterial = await db.jobMaterial.findUnique({where: {id: parseInt(id, 10)}})
+        if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Job material not found.' });
+
+        try {
+            const deletedJobMaterial = await db.jobMaterial.delete({ where : {id: parseInt(id, 10)}})
+            
+            res.status(200).json({data: deletedJobMaterial, msg: "Job material deleted successfully."});
+
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({error_code: 500, msg: "Internal server error."})
+        }
+    }
+
+}
+
+class JobController {
+    job: Job
+    jobMaterial: JobMaterial
+    constructor() {
+        this.job = new Job()
+        this.jobMaterial = new JobMaterial()
+    }
+}
+
 
 const jobController = new JobController();
 export default jobController;
