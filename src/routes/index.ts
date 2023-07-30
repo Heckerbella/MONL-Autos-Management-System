@@ -23,6 +23,7 @@ router.get('/status', appController.getStatus)
 
 // Auth Section
 router.post('/auth/login', auth.login)
+router.post('/auth/token/refresh', auth.refresh)
 
 
 // Dashboard Section

@@ -1,6 +1,6 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response, NextFunction } from "express";
-import { DecodedToken, generateAccessToken, verifyToken } from "../utils/general";
+import { DecodedToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyToken } from "../utils/general";
 import jwt, { JwtPayload } from 'jsonwebtoken'
 
 
@@ -16,12 +16,14 @@ class Auth {
                 const encodedpassword = Buffer.from(password, 'utf8').toString("base64");
                 if (user.password === encodedpassword) {
                     const token = generateAccessToken(user.email)
+                    const refreshToken = generateRefreshToken(user.email)
                     res.status(200).json({
                         message: 'Login successful',
                         data: {
                             id: user.id,
                             email: user.email,
-                            access_token: token
+                            access_token: token,
+                            refresh_token: refreshToken
                         }
                     })
                 } else {
@@ -99,7 +101,38 @@ class Auth {
                     res.status(401).json({error_code: 401, msg: 'Unauthorized'});
             }
         } catch (error) {
-            console.log(error);
+            res.status(500).json({error_code: 500, msg: 'Internal Server Error'});
+        }
+    }
+
+    async refresh (req: Request, res: Response) {
+        const { refresh_token } = req.body
+        if (!refresh_token) return res.status(401).json({error_code: 400, msg: 'Unauthorized'});
+
+        try {
+            const decodedToken: DecodedToken = verifyRefreshToken(refresh_token?.replace(/^(['"])(.*?)\1$/, '$2'));
+
+            if (decodedToken.error) {
+                const err: any = decodedToken.error
+                if (err instanceof jwt.JsonWebTokenError) {
+                    return res.status(401).json({ error_code: 401, msg: 'Invalid token' });
+                  } else if (err instanceof jwt.TokenExpiredError) {
+                    return res.status(401).json({ error_code: 401, msg: 'Token has expired' });
+                  } else if (err instanceof jwt.NotBeforeError) {
+                    return res.status(401).json({ error_code: 401, msg: 'Token cannot be used yet' });
+                  }
+                  return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
+                
+            } else {
+                const { email, refresh } = decodedToken?.data?.data ?? { email: null, refresh: null };
+                if (email && refresh) {
+                    const access_token = generateAccessToken(email)
+                    return res.status(200).json({data: {access_token}, msg: "Token refreshed successfully."});   
+                } else {
+                    res.status(401).json({error_code: 401, msg: 'Unauthorized'});
+                }
+            }
+        } catch (error) {
             res.status(500).json({error_code: 500, msg: 'Internal Server Error'});
         }
     }

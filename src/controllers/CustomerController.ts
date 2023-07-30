@@ -56,7 +56,6 @@ class CustomerController {
                     }
                     
                 } catch (error) {
-                    console.log(error)
                     res.status(400).json({ error_code: 400, msg: 'Could not create customer' });
                 }
             }

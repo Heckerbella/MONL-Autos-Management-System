@@ -190,7 +190,6 @@ class Job  {
             res.status(200).json({data: deletedJob, msg: "Job deleted successfully."});
 
         } catch (error) {
-            console.log(error)
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
     }
@@ -275,7 +274,6 @@ class JobMaterial {
             res.status(200).json({data: deletedJobMaterial, msg: "Job material deleted successfully."});
 
         } catch (error) {
-            console.log(error)
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
     }

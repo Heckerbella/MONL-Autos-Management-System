@@ -6,22 +6,16 @@ const result = dotenv.config()
 export const envs = result.parsed || {}
 
 const key = envs.TOKEN_SECRET || process.env.TOKEN_SECRET
+const refreshKey = envs.REFRESH_TOKEN_SECRET || process.env.REFRESH_TOKEN_SECRET
 
 
 export function generateAccessToken(email : string) {
     return jwt.sign({data: {email}}, key as string, { expiresIn: '24h' });
 }
 
-// export function verifyAccessToken(token : string) {
-//     // return jwt.verify(token, key as string) as {data: {username: string}}
-//     const decodedToken = verifyToken(token, key);
-
-//     if (decodedToken.error) {
-//     console.error('Error verifying JWT:', decodedToken.error);
-//     } else {
-//     console.log('Decoded JWT data:', decodedToken.data);
-//     }
-// }
+export function generateRefreshToken(email: string) {
+    return jwt.sign({data: {refresh: true, email}}, refreshKey as string, { expiresIn: '7d' });
+}
 
 
 export interface DecodedToken {
@@ -32,6 +26,15 @@ export interface DecodedToken {
 export function verifyToken(token: string): DecodedToken {
   try {
     const data = jwt.verify(token, key as string) as JwtPayload;
+    return { data };
+  } catch (error: any) {
+    return { error: error };
+  }
+}
+
+export function verifyRefreshToken(token: string) {
+  try {
+    const data = jwt.verify(token, refreshKey as string) as JwtPayload;
     return { data };
   } catch (error: any) {
     return { error: error };

@@ -54,11 +54,8 @@ class DashboardController {
             res.status(200).json({data, msg: "Dashboard data retrieved successfully."});
             
         } catch (error) {
-            // console.log(error);
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve dashboard data.' });
         }
-
-        // let result = await db.customer.
     }
 }
 
