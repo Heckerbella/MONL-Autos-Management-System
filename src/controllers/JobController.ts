@@ -1,7 +1,12 @@
-import { Prisma } from "@prisma/client";
+import { JobStatus, Prisma } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { isValidDate } from "../utils/general";
+
+
+function isValidJobStatus(status: string) {
+    return Object.values(JobStatus).includes(status as JobStatus);
+}
 
 
 class Job  {
@@ -19,7 +24,8 @@ class Job  {
             job_type_id,
             customer_id,
             vehicle_id,
-            delivery_date
+            delivery_date,
+            status
         } = req.body
 
         if (
@@ -32,6 +38,7 @@ class Job  {
 
         if (delivery_date && !isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
 
+        if (status && !isValidJobStatus(status)) return res.status(400).json({ error_code: 400, msg: 'Invalid job status. Accepted values are: NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED' });
         try {
             const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
             const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
@@ -42,13 +49,20 @@ class Job  {
             if (!vehicle) return res.status(404).json({ error_code: 404, msg: 'Vehicle not found.' });
             if (vehicle && vehicle.ownerID != customer.id) return res.status(400).json({ error_code: 400, msg: 'Vehicle does not belong to customer.' });
 
+            // let data: {[key: string]: number | Date | string | null } = {
+                const data: Prisma.JobUncheckedCreateInput = {
+                jobTypeID: parseInt(job_type_id, 10),
+                customerID: parseInt(customer_id, 10),
+                vehicleID: parseInt(vehicle_id, 10),
+                deliveryDate: delivery_date ? (new Date(delivery_date)).toISOString() : null
+            }
+
+            // let data: Prisma.JobCreateInput = {}
+
+            if (status) data["status"] = status
+
             const job = await db.job.create({
-                data: {
-                    jobTypeID: parseInt(job_type_id, 10),
-                    customerID: parseInt(customer_id, 10),
-                    vehicleID: parseInt(vehicle_id, 10),
-                    deliveryDate: delivery_date ? (new Date(delivery_date)).toISOString() : null
-                }
+                data
             })
             res.status(201).json({data: job, msg: "Job created successfully."});
         } catch (error) {
@@ -67,6 +81,7 @@ class Job  {
                 select: {
                     id: true,
                     jobTypeID: true,
+                    status: true,
                     jobType: {
                         select: {
                             name: true
@@ -105,6 +120,7 @@ class Job  {
                 select: {
                     id: true,
                     jobTypeID: true,
+                    status: true,
                     jobType: {
                         select: {
                             name: true
@@ -143,7 +159,7 @@ class Job  {
     async updateJob (req: Request, res: Response) {
         // async updateJob (req: Request, res: Response) {
         const { id } = req.params;
-        const {delivery_date} = req.body;
+        const {delivery_date, status} = req.body;
 
         const job = await db.job.findUnique({where: {id: parseInt(id, 10)}})
         if (!job) {
@@ -152,15 +168,18 @@ class Job  {
 
 
         if (!isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Invalid date. Please set date in the format YYYY-MM-DD' });
+        if (status && !isValidJobStatus(status)) return res.status(400).json({ error_code: 400, msg: 'Invalid job status. Accepted values are: NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED' });
 
         try {
+            const data: Prisma.JobUpdateInput = {} as Prisma.JobUpdateInput
+
+            if (delivery_date) data["deliveryDate"] = (new Date(delivery_date)).toISOString()
+            if (status) data["status"] = status
             const job = await db.job.update({
                 where: {
                     id: parseInt(id, 10)
                 },
-                data: {
-                    deliveryDate: (new Date(delivery_date)).toISOString()
-                }
+                data
             })
 
             res.status(200).json({data: job, msg: "Job updated successfully."});

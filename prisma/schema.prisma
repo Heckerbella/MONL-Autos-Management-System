@@ -99,6 +99,13 @@ model JobMaterial {
   updatedAt   DateTime @updatedAt
 }
 
+enum JobStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model Job {
   id           Int       @id @default(autoincrement())
   customer     Customer  @relation(fields: [customerID], references: [id])
@@ -110,6 +117,7 @@ model Job {
   deliveryDate DateTime?
   invoice      Invoice?
   estimate     Estimate?
+  status       JobStatus @default(NOT_STARTED)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }

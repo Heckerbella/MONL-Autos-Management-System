@@ -1,6 +1,7 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { isValidDate } from "../utils/general";
+import { Prisma } from "@prisma/client";
 
 class InvoiceController {
     async createInvoice (req: Request, res: Response) {
@@ -125,7 +126,7 @@ class InvoiceController {
             const invoice = await db.invoice.findUnique({where: {id: parseInt(id, 10)}})
 
             if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
-            const data: {[key: string]: number | string} = {}
+            const data: Prisma.InvoiceUncheckedCreateInput = {} as Prisma.InvoiceUncheckedCreateInput
     
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
