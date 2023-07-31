@@ -111,7 +111,34 @@ class InvoiceController {
 
     async getInvoices (req: Request, res: Response) {
         try {
-            const invoices = await db.invoice.findMany();
+            const invoices = await db.invoice.findMany({ select: {
+                id: true,
+                invoiceNo: true,
+                paid: true,
+                description: true,
+                createdAt: true,
+                dueDate: true,
+                materials: true,
+                vat: true,
+                discount: true,
+                amount: true,
+                discountType: true,
+                customerID: true,
+                customer: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    }
+                },
+                vehicleID: true,
+                vehicle: {
+                    select: {
+                        modelNo: true,
+                        modelName: true,
+                    }
+                },
+            }});
             res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });
@@ -144,6 +171,17 @@ class InvoiceController {
                             billingAddress: true,
                             companyContact: true,
                             companyName: true
+                        }
+                    },
+                    vehicle: {
+                        select: {
+                            modelNo: true,
+                            modelName: true,
+                        }
+                    },
+                    jobType: {
+                        select: {
+                            name: true
                         }
                     }
                 }
