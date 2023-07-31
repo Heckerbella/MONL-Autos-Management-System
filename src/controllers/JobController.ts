@@ -236,13 +236,19 @@ class JobMaterial {
     }
 
     async getMaterials (req: Request, res: Response) {
-        const {name} = req.query || ""
+        const name = req.query?.name?.toString() ?? ""
         try {
             const materials = await db.jobMaterial.findMany({
-                
+                where: {
+                    productName: {
+                        contains: name,
+                        mode: "insensitive"
+                    }
+                }
             });
             res.status(200).json({data: materials});
         } catch (error) {
+            console.log(error)
             res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
     }
