@@ -183,7 +183,6 @@ class InvoiceController {
     async updateInvoice (req: Request, res: Response) {
         const { id } = req.params;
         const {
-            amount,
             description,
             due_date,
             paid
@@ -197,7 +196,6 @@ class InvoiceController {
     
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
-            if (amount) data['amount'] = parseFloat(amount)
             if (description) data['description'] = description
             if (paid) data['paid'] = paid
 
