@@ -102,7 +102,7 @@ class CustomerController {
                                     licensePlate: license_plate,
                                     ownerID: customer.id,
                                     vehicleTypeID: parseInt(vehicle_type_id, 10),
-                                    mileage
+                                    mileage: parseInt(mileage, 10)
                                 }
                             })
                             vehicle["vehichleID"] = vehicle.id
@@ -112,6 +112,7 @@ class CustomerController {
                     }
                     
                 } catch (error) {
+                    console.log(error)
                     res.status(400).json({ error_code: 400, msg: 'Could not create customer' });
                 }
             }

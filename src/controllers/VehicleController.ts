@@ -40,7 +40,7 @@ class VehicleController {
                     licensePlate: license_plate,
                     ownerID: parseInt(owner_id, 10),
                     vehicleTypeID: parseInt(vehicle_type_id, 10),
-                    mileage
+                    mileage: parseInt(mileage, 10)
                 }
             })
 
@@ -207,7 +207,8 @@ class VehicleController {
             engine_no,
             chassis_no,
             license_plate,
-            vehicle_type_id
+            vehicle_type_id,
+            mileage
         } = req.body
         const {vehicleID, customerID} = req.params
 
@@ -226,6 +227,7 @@ class VehicleController {
 
         if (model_no) data.modelNo = model_no
         if (model_name) data.modelName = model_name
+        if (mileage) data.mileage = parseInt(mileage, 10)
         if (engine_no) {
             const vehicleWithEngineNo = await db.vehicle.findFirst({
                 where: {
