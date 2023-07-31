@@ -8,7 +8,12 @@ import cors from 'cors'
 export const PORT = process.env.PORT || 5000;
 const app = express();
 app.use(express.json());
-app.use(cors())
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Add PATCH to the allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use('/api/v1/', router);
 
 
