@@ -142,9 +142,7 @@ class Job  {
                             chasisNo: true,
                         }
                     },
-                    deliveryDate: true,
-                    invoice: true,
-                    estimate: true
+                    deliveryDate: true
                 }
             });
             if (!job) {
@@ -194,16 +192,10 @@ class Job  {
         try {
             let job = await db.job.findUnique({
                 where: {id: parseInt(id, 10)},
-                select: {
-                    invoice: true,
-                    estimate: true
-                }
             })
 
             if (!job) return res.status(400).json({ error_code: 400, msg: "Job not found."})
 
-            if (job.invoice) return res.status(400).json({ error_code: 400, msg: "Job has an invoice. Please delete invoice first."})
-            if (job.estimate) return res.status(400).json({ error_code: 400, msg: "Job has an estimate. Please delete estimate first."})
             const deletedJob = await db.job.delete({ where : {id: parseInt(id, 10)}})
             
             res.status(200).json({data: deletedJob, msg: "Job deleted successfully."});
@@ -248,7 +240,7 @@ class JobMaterial {
             });
             res.status(200).json({data: materials});
         } catch (error) {
-            console.log(error)
+            // console.log(error)
             res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
     }

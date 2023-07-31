@@ -10,10 +10,11 @@ function isValidDiscountType(type: string) {
 class InvoiceController {
     async createInvoice (req: Request, res: Response) {
         const {
-            job_id,
+            job_type_id,
             description,
             due_date,
             customer_id,
+            vehicle_id,
             materials,
             service_charge,
             vat,
@@ -22,7 +23,8 @@ class InvoiceController {
         } = req.body
 
         if (
-            !job_id || 
+            !job_type_id ||
+            !vehicle_id ||
             !customer_id
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
@@ -31,19 +33,18 @@ class InvoiceController {
         if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
 
         try {
-            const job = await db.job.findUnique({where: {id: parseInt(job_id, 10)}, select: { invoice: true}})
             const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
-
             if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
-            if (!job) return res.status(404).json({ error_code: 404, msg: 'Job not found.' });
-            if (job.invoice) return res.status(400).json({ error_code: 400, msg: 'Invoice already exists for this job.' });
+            const vehicle = await db.vehicle.findFirst({where: {ownerID: customer.id}})
+            if (!vehicle) return res.status(404).json({ error_code: 404, msg: "Vehicle not found or vehichle doesn't belong to customer."})
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
             const data: Prisma.InvoiceUncheckedCreateInput = {
-                jobID: parseInt(job_id, 10),
                 customerID: parseInt(customer_id, 10),
+                jobTypeID: parseInt(job_type_id, 10),
+                vehicleID: parseInt(vehicle_id, 10),
                 description,
                 dueDate: due_date ? (new Date(due_date)).toISOString() : null
             }
@@ -134,30 +135,6 @@ class InvoiceController {
                     discount: true,
                     amount: true,
                     discountType: true,
-                    job: {
-                        select: {
-                            id: true,
-                            estimate: true,
-                            jobType: {
-                                select: {
-                                    name: true
-                                }
-                            },
-                            vehicle: {
-                                select: {
-                                    modelName: true,
-                                    modelNo: true,
-                                    licensePlate: true,
-                                    vehicleType: {
-                                        select: {
-                                            name: true
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
-                    },
                     customer: {
                         select: {
                             firstName: true,

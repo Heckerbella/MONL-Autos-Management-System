@@ -4,32 +4,33 @@ import { Request, Response } from "express";
 class EstimateController {
     async createEstimate (req: Request, res: Response) {
         const {
-            job_id,
+            job_type_id,
             amount,
+            vehicle_id,
             description,
             customer_id
         } = req.body
 
         if (
-            !job_id || 
             !amount ||
-            !customer_id
+            !customer_id ||
+            !vehicle_id ||
+            !job_type_id
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
 
         try {
-            const job = await db.job.findUnique({where: {id: parseInt(job_id, 10)}, select: { estimate: true}})
             const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
 
             if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
-            if (!job) return res.status(404).json({ error_code: 404, msg: 'Job not found.' });
-            if (job.estimate) return res.status(400).json({ error_code: 400, msg: 'Estimate already exists for this job.' });
-
+            const vehicle = await db.vehicle.findFirst({where: {ownerID: customer.id}})
+            if (!vehicle) return res.status(404).json({ error_code: 404, msg: "Vehicle not found or vehichle doesn't belong to customer."})
             const estimate = await db.estimate.create({
                 data: {
-                    jobID: parseInt(job_id, 10),
                     customerID: parseInt(customer_id, 10),
+                    jobTypeID: parseInt(job_type_id, 10),
+                    vehicleID: parseInt(vehicle_id, 10),
                     amount: parseFloat(amount),
                     description,
                 }
@@ -60,30 +61,6 @@ class EstimateController {
                     createdAt: true,
                     description: true,
                     amount: true,
-                    job: {
-                        select: {
-                            id: true,
-                            invoice: true,
-                            jobType: {
-                                select: {
-                                    name: true
-                                }
-                            },
-                            vehicle: {
-                                select: {
-                                    modelName: true,
-                                    modelNo: true,
-                                    licensePlate: true,
-                                    vehicleType: {
-                                        select: {
-                                            name: true
-                                        }
-                                    }
-
-                                }
-                            }
-                        }
-                    },
                     customer: {
                         select: {
                             firstName: true,
