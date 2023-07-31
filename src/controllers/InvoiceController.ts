@@ -1,21 +1,28 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { isValidDate } from "../utils/general";
-import { Prisma } from "@prisma/client";
+import { DiscountType, Prisma } from "@prisma/client";
+
+function isValidDiscountType(type: string) {
+    return Object.values(DiscountType).includes(type as DiscountType);
+}
 
 class InvoiceController {
     async createInvoice (req: Request, res: Response) {
         const {
             job_id,
-            amount,
             description,
             due_date,
-            customer_id
+            customer_id,
+            materials,
+            service_charge,
+            vat,
+            discount,
+            discount_type,
         } = req.body
 
         if (
             !job_id || 
-            !amount ||
             !customer_id
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
@@ -30,18 +37,73 @@ class InvoiceController {
             if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
             if (!job) return res.status(404).json({ error_code: 404, msg: 'Job not found.' });
             if (job.invoice) return res.status(400).json({ error_code: 400, msg: 'Invoice already exists for this job.' });
+            if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
+            if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
+            if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
+
+            const data: Prisma.InvoiceUncheckedCreateInput = {
+                jobID: parseInt(job_id, 10),
+                customerID: parseInt(customer_id, 10),
+                description,
+                dueDate: due_date ? (new Date(due_date)).toISOString() : null
+            }
+            let total = 0;
+
+            if (service_charge) {
+                total += parseFloat(service_charge)
+                data["serviceCharge"] = parseFloat(service_charge).toFixed(2)
+            }
+
+            let materialIDs, jobMaterials;
+            if (materials) {
+                materialIDs = materials.split(',').map((id: string) => parseInt(id, 10));
+                let mat;
+                for (const id of materialIDs) {
+                    mat = await db.jobMaterial.findUnique({where: {id}})
+                    if (!mat) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
+                }
+
+                jobMaterials = await db.jobMaterial.findMany({where: {id: {in: materialIDs}}, select: {id: true, productCost: true}})
+            }
+
+            total = jobMaterials?.reduce((acc, curr) => acc + curr.productCost.toNumber(), total) || 0;
+
+            if (discount) {
+                if (discount_type == "AMOUNT") total -= parseFloat(discount)
+                if (discount_type == "PERCENTAGE") total -= total * (parseFloat(discount)/100)
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+            }
+
+            if (vat) {
+                data["vat"] = parseFloat(vat);
+                total += total * (parseFloat(vat)/100)
+            } else {
+                total += total * (7.5/100)
+            }
+
+            data["amount"] = total
+            // console.log(data)
 
             const invoice = await db.invoice.create({
-                data: {
-                    jobID: parseInt(job_id, 10),
-                    customerID: parseInt(customer_id, 10),
-                    amount: parseFloat(amount),
-                    description,
-                    dueDate: due_date ? (new Date(due_date)).toISOString() : null
-                }
+                data
             })
+
+            if (invoice && jobMaterials) {
+                for (const mat of jobMaterials) {
+                    await db.invoiceJobMaterial.create({
+                        data: {
+                            invoiceID: invoice.id,
+                            jobMaterialID: mat.id,
+                            price: mat.productCost
+                        }
+                    })
+                }
+            }
+
             res.status(201).json({data: invoice, msg: "Invoice created successfully."});
         } catch (error) {
+            console.error(error)
             res.status(400).json({ error_code: 400, msg: 'Could not create invoice.' });
         }
     }
@@ -67,6 +129,11 @@ class InvoiceController {
                     description: true,
                     createdAt: true,
                     dueDate: true,
+                    materials: true,
+                    vat: true,
+                    discount: true,
+                    amount: true,
+                    discountType: true,
                     job: {
                         select: {
                             id: true,

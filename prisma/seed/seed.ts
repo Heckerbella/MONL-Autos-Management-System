@@ -1,5 +1,6 @@
 // import { PrismaClient } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
+import { readExcelAndSeedDatabase } from "../../src/utils/seedJobMaterial";
 import { user, roles, customerTypes, vehicleTypes, jobTypes } from "./data";
 
 
@@ -35,7 +36,7 @@ async function seed() {
     // Set the starting value of the auto-incremented InvoiceNo and EstimateNo to 100000
     await db.$queryRaw`ALTER SEQUENCE "Invoice_invoiceNo_seq" RESTART WITH 100000`;
     await db.$queryRaw`ALTER SEQUENCE "Estimate_estimateNo_seq" RESTART WITH 100000`;
-
+    await readExcelAndSeedDatabase();
 
 }
 

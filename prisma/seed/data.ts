@@ -27,11 +27,11 @@ export const roles = [
 export const jobTypes = [
     {
         id: 1,
-        name: "Type 1"
+        name: "Servicing"
     },
     {
         id: 2,
-        name: "Type 2"
+        name: "Repair"
     }
 ]
 
