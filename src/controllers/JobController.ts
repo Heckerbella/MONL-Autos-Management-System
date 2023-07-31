@@ -236,8 +236,11 @@ class JobMaterial {
     }
 
     async getMaterials (req: Request, res: Response) {
+        const {name} = req.query || ""
         try {
-            const materials = await db.jobMaterial.findMany();
+            const materials = await db.jobMaterial.findMany({
+                
+            });
             res.status(200).json({data: materials});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });

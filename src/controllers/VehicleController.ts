@@ -23,7 +23,7 @@ class VehicleController {
         if (chassis_no.length !== 17) return res.status(400).json({ error_code: 400, msg: 'Chassis/VIN number must be 17 characters.' });
 
         try {
-            const owner = await db.customer.findUnique({where: {id: owner_id}})
+            const owner = await db.customer.findUnique({where: {id: parseInt(owner_id, 10)}})
             const vehicleType = await db.vehicleType.findUnique({where: {id: parseInt(vehicle_type_id, 10)}})
             const vehicleInDB = await db.vehicle.findUnique({where: {licensePlate: license_plate}})
 
@@ -49,6 +49,7 @@ class VehicleController {
             }
             
         } catch (error) {
+            console.log(error)
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
         
