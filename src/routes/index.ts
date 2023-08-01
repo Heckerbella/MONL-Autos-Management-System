@@ -53,14 +53,19 @@ customerRouter.delete('/:id', auth.auth, customerController.deleteCustomer)
 // Vehicle Section
 const vehicleRouter = express.Router();
 router.use('/vehicles', vehicleRouter);
-vehicleRouter.post('/', auth.auth, vehicleController.createVehicle)
-vehicleRouter.get('/', auth.auth, vehicleController.getVehicles)
-vehicleRouter.get('/types', auth.auth, vehicleController.getVehicleTypes)
-vehicleRouter.get('/:id', auth.auth, vehicleController.getVehicle)
-customerRouter.get('/:customerID/vehicles', auth.auth, vehicleController.getCustomerVehicles)
-customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.getCustomerVehicle)
-customerRouter.put('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.updateCustomerVehicle)
-customerRouter.delete('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.deleteCustomerVehicle)
+vehicleRouter.post('/', auth.auth, vehicleController.vehicle.createVehicle)
+vehicleRouter.get('/', auth.auth, vehicleController.vehicle.getVehicles)
+vehicleRouter.get('/types', auth.auth, vehicleController.vehicle.getVehicleTypes)
+vehicleRouter.get('/:id', auth.auth, vehicleController.vehicle.getVehicle)
+vehicleRouter.post('/types', auth.auth, vehicleController.vehicleType.createType)
+vehicleRouter.get('/types', auth.auth, vehicleController.vehicleType.getTypes)
+vehicleRouter.get('/types/:id', auth.auth, vehicleController.vehicleType.getType)
+vehicleRouter.put('/types/:id', auth.auth, vehicleController.vehicleType.updateType)
+vehicleRouter.delete('/types/:id', auth.auth, vehicleController.vehicleType.deleteType)
+customerRouter.get('/:customerID/vehicles', auth.auth, vehicleController.vehicle.getCustomerVehicles)
+customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.getCustomerVehicle)
+customerRouter.put('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.updateCustomerVehicle)
+customerRouter.delete('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.deleteCustomerVehicle)
 
 
 // Job Section

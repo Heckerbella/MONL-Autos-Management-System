@@ -1,7 +1,7 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 
-class VehicleController {
+class Vehicle {
     async createVehicle (req: Request, res: Response) {
         const {
             owner_id,
@@ -328,6 +328,88 @@ class VehicleController {
         }
     }
 
+}
+
+class VehicleType {
+    async getTypes (req: Request, res: Response) {
+        try {
+            const vehicleTypes = await db.vehicleType.findMany()
+            res.status(200).json({data: vehicleTypes});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });
+        }
+    }
+
+    async getType (req: Request, res: Response) {
+        const {id} = req.params
+        try {
+            const vehicleType = await db.vehicleType.findUnique({
+                where: {
+                    id: parseInt(id, 10)
+                }
+            })
+            res.status(200).json({data: vehicleType});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not get vehicle type.' });
+        }
+    }
+
+    async createType(req: Request, res: Response) {
+        const {name} = req.body
+
+        if (!name) return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
+        try {
+            const vehicleType = await db.vehicleType.create({
+                data: {
+                    name
+                }
+            })
+            res.status(201).json({data: vehicleType, msg: "Vehicle type created successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not create vehicle type.' });
+        }
+    }
+
+    async updateType (req: Request, res: Response) {
+        const {id} = req.params
+        const {name} = req.body
+        try {
+            const vehicleType = await db.vehicleType.update({
+                where: {
+                    id: parseInt(id, 10)
+                },
+                data: {
+                    name
+                }
+            })
+            res.status(200).json({data: vehicleType, msg: "Vehicle type updated successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not update vehicle type.' });
+        }
+    }
+
+    async deleteType (req: Request, res: Response) {
+        const {id} = req.params
+        try {
+            const vehicleType = await db.vehicleType.delete({
+                where: {
+                    id: parseInt(id, 10)
+                }
+            })
+            res.status(200).json({data: vehicleType, msg: "Vehicle type deleted successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not delete vehicle type.' });
+        }
+    }
+}
+
+class VehicleController {
+    vehicle: Vehicle
+    vehicleType: VehicleType
+    constructor() {
+        this.vehicle = new Vehicle()
+        this.vehicleType = new VehicleType()
+    }
 }
 
 const vehicleController = new VehicleController();
