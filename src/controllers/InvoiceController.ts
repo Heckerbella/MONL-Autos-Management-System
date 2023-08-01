@@ -7,6 +7,24 @@ function isValidDiscountType(type: string) {
     return Object.values(DiscountType).includes(type as DiscountType);
 }
 
+function isValidString(inputString: string) {
+    const pattern = /^(\d+:\d+(?:,|$))+$/;
+    return pattern.test(inputString);
+  }
+  
+function convertStringToObjectArray(inputString: string) {
+    if (!isValidString(inputString)) {
+        throw new Error('Invalid input string format');
+    }
+
+    const objArray = inputString.split(',').map((item: string) => {
+        const [id, qty] = item.split(':');
+        return { id: parseInt(id), qty: parseInt(qty) };
+    });
+
+    return objArray;
+}
+
 class InvoiceController {
     async createInvoice (req: Request, res: Response) {
         const {
@@ -55,19 +73,21 @@ class InvoiceController {
                 data["serviceCharge"] = parseFloat(service_charge).toFixed(2)
             }
 
-            let materialIDs, jobMaterials;
+            let materialIDs, jobMaterials = [];
             if (materials) {
-                materialIDs = materials.split(',').map((id: string) => parseInt(id, 10));
-                let mat;
-                for (const id of materialIDs) {
-                    mat = await db.jobMaterial.findUnique({where: {id}})
-                    if (!mat) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
-                }
+                if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
+                materialIDs = convertStringToObjectArray(materials)
 
-                jobMaterials = await db.jobMaterial.findMany({where: {id: {in: materialIDs}}, select: {id: true, productCost: true}})
+                for (const item of materialIDs) {
+                    const { id, qty } = item
+                    const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
+                    if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
+                    jobMaterials.push(jobMaterial)
+                    const productCostNumber = parseFloat(jobMaterial.productCost.toString());
+                    total += productCostNumber * qty
+                }
             }
 
-            total = jobMaterials?.reduce((acc, curr) => acc + curr.productCost.toNumber(), total) || 0;
 
             if (discount) {
                 if (discount_type == "AMOUNT") total -= parseFloat(discount)
@@ -96,6 +116,7 @@ class InvoiceController {
                         data: {
                             invoiceID: invoice.id,
                             jobMaterialID: mat.id,
+                            quantity: materialIDs?.find((item) => item.id == mat.id)?.qty,
                             price: mat.productCost
                         }
                     })
@@ -158,6 +179,7 @@ class InvoiceController {
                     createdAt: true,
                     dueDate: true,
                     materials: true,
+                    serviceCharge: true,
                     vat: true,
                     discount: true,
                     amount: true,
