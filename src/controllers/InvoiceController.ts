@@ -183,8 +183,7 @@ class InvoiceController {
                         select: {
                             name: true
                         }
-                    }
-                }
+                    }                }
              });
             if (!invoice) {
                 return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });

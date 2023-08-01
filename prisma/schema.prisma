@@ -159,6 +159,7 @@ model InvoiceJobMaterial {
   jobMaterial   JobMaterial @relation(fields: [jobMaterialID], references: [id])
   jobMaterialID Int
   price         Decimal     @default(0) @db.Decimal(10, 2)
+  quantity      Int         @default(1)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -171,8 +172,8 @@ model Estimate {
   customerID  Int
   jobType     JobType  @relation(fields: [jobTypeID], references: [id])
   jobTypeID   Int
-  vehicle       Vehicle              @relation(fields: [vehicleID], references: [id])
-  vehicleID     Int
+  vehicle     Vehicle  @relation(fields: [vehicleID], references: [id])
+  vehicleID   Int
   amount      Decimal  @default(0) @db.Decimal(10, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
