@@ -150,6 +150,7 @@ class InvoiceController {
                         firstName: true,
                         lastName: true,
                         email: true,
+                        phone:true,
                     }
                 },
                 vehicleID: true,
@@ -178,7 +179,6 @@ class InvoiceController {
                     description: true,
                     createdAt: true,
                     dueDate: true,
-                    materials: true,
                     serviceCharge: true,
                     vat: true,
                     discount: true,
@@ -199,13 +199,26 @@ class InvoiceController {
                         select: {
                             modelNo: true,
                             modelName: true,
+                            licensePlate: true
                         }
                     },
                     jobType: {
                         select: {
                             name: true
                         }
-                    }                }
+                    },
+                    materials: {
+                        select: {
+                            price: true,
+                            quantity: true,
+                            jobMaterial: {
+                                select: {
+                                    productName: true
+                                }
+                            }
+                        }
+                    }            
+                }
              });
             if (!invoice) {
                 return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });

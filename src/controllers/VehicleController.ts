@@ -104,6 +104,7 @@ class Vehicle {
                     engineNo: true,
                     chasisNo: true,
                     licensePlate: true,
+                    mileage: true,
                     ownerID: true,
                     vehicleTypeID: true,
                     owner: {
