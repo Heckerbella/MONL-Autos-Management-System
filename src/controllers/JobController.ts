@@ -40,6 +40,8 @@ class Job  {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
 
+
+
         if (delivery_date && !isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
 
         if (status && !isValidJobStatus(status)) return res.status(400).json({ error_code: 400, msg: 'Invalid job status. Accepted values are: NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED' });
@@ -54,12 +56,14 @@ class Job  {
             if (vehicle && vehicle.ownerID != customer.id) return res.status(400).json({ error_code: 400, msg: 'Vehicle does not belong to customer.' });
 
             // let data: {[key: string]: number | Date | string | null } = {
-                const data: Prisma.JobUncheckedCreateInput = {
+            const data: Prisma.JobUncheckedCreateInput = {
                 jobTypeID: parseInt(job_type_id, 10),
                 customerID: parseInt(customer_id, 10),
                 vehicleID: parseInt(vehicle_id, 10),
-                deliveryDate: delivery_date ? (new Date(delivery_date)).toISOString() : null
             }
+
+            if (delivery_date) data["deliveryDate"] = (new Date(delivery_date)).toISOString()
+
 
             // let data: Prisma.JobCreateInput = {}
 
