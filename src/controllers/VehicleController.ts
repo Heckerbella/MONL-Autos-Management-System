@@ -194,6 +194,7 @@ class Vehicle {
                     licensePlate: true,
                     ownerID: true,
                     vehicleTypeID: true,
+                    mileage: true,
                     vehicleType: {
                         select: {
                             id: true,
