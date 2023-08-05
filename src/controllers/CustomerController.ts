@@ -28,11 +28,11 @@ class CustomerController {
         if (
             !customer_type_id || !first_name || !last_name || !email || !billing_address || !phone
             ) {
-                if (!customer_type_id) {
-                    return res.status(400).json({ error_code: 400, msg: `Missing information: customer_type_id` });
-                }
                 if (!first_name) {
                     return res.status(400).json({ error_code: 400, msg: `Missing information: first_name` });
+                }
+                if (!customer_type_id) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: customer_type_id` });
                 }
                 if (!last_name) {
                     return res.status(400).json({ error_code: 400, msg: `Missing information: last_name` });
