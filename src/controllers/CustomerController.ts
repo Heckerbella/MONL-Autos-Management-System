@@ -28,6 +28,24 @@ class CustomerController {
         if (
             !customer_type_id || !first_name || !last_name || !email || !billing_address || !phone
             ) {
+                if (!customer_type_id) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: customer_type_id` });
+                }
+                if (!first_name) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: first_name` });
+                }
+                if (!last_name) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: last_name` });
+                }
+                if (!email) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: email` });
+                }
+                if (!phone) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: phone` });
+                }
+                if (!billing_address) {
+                    return res.status(400).json({ error_code: 400, msg: `Missing information: billing_address` });
+                }
                 return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
             } else if ((company_name  && !company_contact) || (!company_name && company_contact)) {
                 return res.status(400).json({ error_code: 400, msg: 'Company information is incomplete.' });
