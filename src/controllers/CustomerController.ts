@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "../utils/prismaClient";
 import { Request, Response } from "express";
 
@@ -164,15 +165,15 @@ class CustomerController {
         const customer = await db.customer.findUnique({where: {id: parseInt(id, 10)}})
 
         if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
-        const data: {[key: string]: string | number} = {}
+        const data: Prisma.CustomerUncheckedCreateInput = {} as Prisma.CustomerUncheckedCreateInput
         if (first_name) {
-            data.first_name = first_name;
+            data.firstName = first_name;
         }
         if (last_name) {
-            data.last_name = last_name;
+            data.lastName = last_name;
         }
         if (other_name) {
-            data.other_name = other_name;
+            data.otherName = other_name;
         }
         if (email) {
             const customer = await db.customer.findUnique({where: {email}})
