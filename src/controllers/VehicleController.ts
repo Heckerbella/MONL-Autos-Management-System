@@ -82,6 +82,9 @@ class Vehicle {
                             name: true
                         }
                     }
+                },
+                orderBy: {
+                    id: 'asc'
                 }
             })
             res.status(200).json({data: vehicles});
@@ -122,6 +125,9 @@ class Vehicle {
                             name: true
                         }
                     }
+                },
+                orderBy: {
+                    id: 'asc'
                 }
             })
             res.status(200).json({data: vehicles});
@@ -322,7 +328,11 @@ class Vehicle {
 
     async getVehicleTypes (req: Request, res: Response) {
         try {
-            const vehicleTypes = await db.vehicleType.findMany();
+            const vehicleTypes = await db.vehicleType.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: vehicleTypes});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });
@@ -334,7 +344,11 @@ class Vehicle {
 class VehicleType {
     async getTypes (req: Request, res: Response) {
         try {
-            const vehicleTypes = await db.vehicleType.findMany()
+            const vehicleTypes = await db.vehicleType.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            })
             res.status(200).json({data: vehicleTypes});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });

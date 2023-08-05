@@ -60,6 +60,9 @@ class UserController {
                             name: true
                         }
                     }
+                },
+                orderBy: {
+                    id: 'asc'
                 }
             });
             res.status(200).json({data: users});
@@ -151,7 +154,11 @@ class UserController {
 
         async getUserRoles (req: Request, res: Response) {
         try {
-            const userRoles = await db.role.findMany();
+            const userRoles = await db.role.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: userRoles});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get user roles.' });

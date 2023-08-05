@@ -43,7 +43,11 @@ class EstimateController {
 
     async getEstimates (req: Request, res: Response) {
         try {
-            const estimates = await db.estimate.findMany();
+            const estimates = await db.estimate.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: estimates, msg: "Estimates retrieved successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve estimates.' });

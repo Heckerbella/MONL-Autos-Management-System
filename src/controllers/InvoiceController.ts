@@ -160,7 +160,11 @@ class InvoiceController {
                         modelName: true,
                     }
                 },
-            }});
+            },
+            orderBy: {
+                id: 'asc'
+            }
+        });
             res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });

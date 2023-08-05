@@ -121,7 +121,11 @@ class CustomerController {
 
     async getCustomers(req: Request, res: Response) {
         try {
-            const customers = await db.customer.findMany();
+            const customers = await db.customer.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: customers});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get customers.' });
@@ -230,7 +234,11 @@ class CustomerController {
 
     async getCustomerTypes (req: Request, res: Response) {
         try {
-            const customerTypes = await db.customerType.findMany();
+            const customerTypes = await db.customerType.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: customerTypes});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get customer types.' });

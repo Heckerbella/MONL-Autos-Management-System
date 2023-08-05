@@ -12,7 +12,11 @@ function isValidJobStatus(status: string) {
 class Job  {
     async getJobTypes (req: Request, res: Response) {
         try {
-            const jobTypes = await db.jobType.findMany();
+            const jobTypes = await db.jobType.findMany({
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: jobTypes});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });
@@ -104,6 +108,9 @@ class Job  {
                         }
                     },
                     deliveryDate: true
+                },
+                orderBy: {
+                    id: 'asc'
                 }
             });
             res.status(200).json({data: jobs});
@@ -236,6 +243,9 @@ class JobMaterial {
                         contains: name,
                         mode: "insensitive"
                     }
+                },
+                orderBy: {
+                    id: 'asc'
                 }
             });
             res.status(200).json({data: materials});
