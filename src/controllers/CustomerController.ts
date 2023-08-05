@@ -33,8 +33,8 @@ class CustomerController {
             } else {
 
                 if (
-                    (model_no || model_name || engine_no || chassis_no || license_plate || vehicle_type_id || mileage) &&
-                    (!(model_no && model_name && engine_no && chassis_no && license_plate && vehicle_type_id && mileage))
+                    (model_no || model_name || chassis_no || license_plate || vehicle_type_id || mileage) &&
+                    (!(model_no && model_name && chassis_no && license_plate && vehicle_type_id && mileage))
                 ) {
                     // At least one property is present, and at least one of the rest is not present
                     return res.status(400).json({ error_code: 400, msg: 'Vehicle information is incomplete.' });
@@ -97,7 +97,7 @@ class CustomerController {
                                 data: {
                                     modelNo: model_no,
                                     modelName: model_name,
-                                    engineNo: engine_no,
+                                    engineNo: engine_no ?? null,
                                     chasisNo: chassis_no,
                                     licensePlate: license_plate,
                                     ownerID: customer.id,
@@ -217,6 +217,10 @@ class CustomerController {
         const customer = await db.customer.findUnique({where: {id: parseInt(id, 10)}})
         if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
         try {
+            await db.estimate.deleteMany({where: {customerID: customer.id}})
+            await db.invoice.deleteMany({where: {customerID: customer.id}})
+            await db.job.deleteMany({where: {customerID: customer.id}})
+            await db.vehicle.deleteMany({where: {ownerID: customer.id}})
             const deletedCustomer = await db.customer.delete({ where: { id: parseInt(id, 10) } });
             res.status(200).json({data: deletedCustomer, msg:"Customer Deleted Sucessfully."});
         } catch (error) {

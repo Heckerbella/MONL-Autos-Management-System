@@ -15,7 +15,7 @@ class Vehicle {
         } = req.body
 
         if (
-            !owner_id || !model_no || !model_name || !engine_no || !chassis_no || !license_plate || !vehicle_type_id || !mileage
+            !owner_id || !model_no || !model_name || !chassis_no || !license_plate || !vehicle_type_id || !mileage
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }

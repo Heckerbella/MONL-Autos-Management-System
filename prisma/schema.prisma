@@ -64,7 +64,7 @@ model Vehicle {
   ownerID       Int
   modelNo       String
   modelName     String
-  engineNo      String      @unique
+  engineNo      String?      @unique
   chasisNo      String      @unique
   licensePlate  String      @unique
   mileage       Int
