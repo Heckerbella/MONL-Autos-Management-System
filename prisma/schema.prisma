@@ -102,6 +102,7 @@ model JobMaterial {
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   InvoiceJobMaterial InvoiceJobMaterial[]
+  EstimateJobMaterial EstimateJobMaterial[]
 }
 
 enum JobStatus {
@@ -164,17 +165,37 @@ model InvoiceJobMaterial {
   updatedAt     DateTime    @updatedAt
 }
 
+
+model EstimateJobMaterial {
+  id            Int         @id @default(autoincrement())
+  estimate       Estimate     @relation(fields: [estimateID], references: [id], onDelete: Cascade)
+  estimateID     Int
+  jobMaterial   JobMaterial @relation(fields: [jobMaterialID], references: [id])
+  jobMaterialID Int
+  price         Decimal     @default(0) @db.Decimal(10, 2)
+  quantity      Int         @default(1)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
 model Estimate {
-  id          Int      @id @default(autoincrement())
-  estimateNo  Int      @default(autoincrement())
-  description String?
-  customer    Customer @relation(fields: [customerID], references: [id])
-  customerID  Int
-  jobType     JobType  @relation(fields: [jobTypeID], references: [id])
-  jobTypeID   Int
-  vehicle     Vehicle  @relation(fields: [vehicleID], references: [id])
-  vehicleID   Int
-  amount      Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int                  @id @default(autoincrement())
+  dueDate       DateTime?
+  description   String?
+  estimateNo     Int                  @default(autoincrement())
+  customer      Customer             @relation(fields: [customerID], references: [id])
+  customerID    Int
+  jobType       JobType              @relation(fields: [jobTypeID], references: [id])
+  jobTypeID     Int
+  vehicle       Vehicle              @relation(fields: [vehicleID], references: [id])
+  vehicleID     Int
+  amount        Decimal              @default(0) @db.Decimal(10, 2)
+  paid          Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  serviceCharge Decimal?             @default(0)
+  updatedAt     DateTime             @updatedAt
+  discountType  DiscountType?
+  vat           Decimal?             @default(7.5) @db.Decimal(6, 1)
+  discount      Decimal?             @default(0) @db.Decimal(6, 2)
+  materials     EstimateJobMaterial[]
 }

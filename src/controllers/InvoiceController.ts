@@ -1,22 +1,60 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { isValidDate } from "../utils/general";
-import { DiscountType, Prisma } from "@prisma/client";
+import { DiscountType, InvoiceJobMaterial, Prisma } from "@prisma/client";
 
-function isValidDiscountType(type: string) {
+export function isValidDiscountType(type: string) {
     return Object.values(DiscountType).includes(type as DiscountType);
 }
 
-function isValidString(inputString: string) {
-    const pattern = /^(\d+:\d+(?:,|$))+$/;
+export function isValidString(inputString: string) {
+    const pattern = /^((\d+:\d+(?:,|$))+)?$/;
     return pattern.test(inputString);
-  }
+}
+
+export function compareArrays<T extends { id: number, qty?: number, jobMaterialID?: number, quantity?: number }>(
+    arrayA: { id: number, qty: number }[],
+    arrayB: T[]
+  ) {
+    // console.log("arr A", arrayA)
+    // Step 1: Identify objects in Array A that are missing in Array B
+    const toBeAdded = arrayA.filter((itemA) => {
+      return !arrayB.some((itemB) => itemB.jobMaterialID === itemA.id);
+    });
   
-function convertStringToObjectArray(inputString: string) {
+    // Step 2: Find objects that are common in both Array A and Array B and to be modified
+    const toBeModified = arrayA.filter((itemA) => {
+      return arrayB.some((itemB) =>  itemB.jobMaterialID === itemA.id && itemA.qty !== itemB.quantity);
+    });
+
+    // Step 3: Find objects that are common in both Array A and Array B and to be modified
+    const toBeUnchanged = arrayB.filter((itemB) => {
+        return arrayA.some((itemA) =>
+            itemB.jobMaterialID === itemA.id && itemB.quantity !== undefined && itemA.qty === itemB.quantity
+        );
+    });
+  
+    // Step 4: Identify objects in Array B that are missing in Array A
+    const toBeRemoved = arrayB.filter((itemB) => {
+      return !arrayA.some((itemA) => itemA.id === itemB.jobMaterialID);
+    });
+  
+    return {
+      toBeAdded,
+      toBeModified,
+      toBeUnchanged,
+      toBeRemoved,
+    };
+}
+
+
+  
+export function convertStringToObjectArray(inputString: string) {
     if (!isValidString(inputString)) {
         throw new Error('Invalid input string format');
     }
 
+    if (inputString.length === 0) return [];
     const objArray = inputString.split(',').map((item: string) => {
         const [id, qty] = item.split(':');
         return { id: parseInt(id), qty: parseInt(qty) };
@@ -238,20 +276,123 @@ class InvoiceController {
         const {
             description,
             due_date,
-            paid
+            paid,
+            job_type_id,
+            service_charge,
+            discount,
+            discount_type,
+            materials,
+            vat
         } = req.body
         
         try {
             const invoice = await db.invoice.findUnique({where: {id: parseInt(id, 10)}})
 
             if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
+
+            if (invoice.paid == true) res.status(400).json({error_code: 400, msg: "Invoice cannot be edited"})
             const data: Prisma.InvoiceUncheckedCreateInput = {} as Prisma.InvoiceUncheckedCreateInput
     
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
             if (description) data['description'] = description
-            if (paid) data['paid'] = paid
+            if (job_type_id) {
+                const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
+                if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
+                data['jobTypeID'] = parseInt(job_type_id, 10)
+            }
 
+            let total = 0;
+    
+            if (service_charge) {
+                total += parseFloat(service_charge)
+                data["serviceCharge"] = parseFloat(service_charge)
+                // console.log(total, `adding service charge: ${service_charge}`)
+            } else if(invoice.serviceCharge) {
+                // console.log(total, `adding service charge: ${invoice.serviceCharge}`)
+                total += parseFloat(invoice.serviceCharge.toString())
+            }
+
+            if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
+            if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
+            if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
+
+            if (paid) data['paid'] = paid
+            if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
+
+            
+            const jobMaterials = await db.invoiceJobMaterial.findMany({where: {invoiceID: parseInt(id, 10)}});
+            const updateJobMaterials = convertStringToObjectArray(materials);
+            
+            const {toBeAdded, toBeModified, toBeUnchanged, toBeRemoved} = compareArrays<InvoiceJobMaterial>(updateJobMaterials, jobMaterials);
+
+            // console.log("add", toBeAdded, "mod", toBeModified, "remove", toBeRemoved, "unchanged", toBeUnchanged)
+
+            for (const jobMaterial of toBeAdded) {
+                const jobMaterialFind = await db.jobMaterial.findUnique({where: {id: jobMaterial.id}})
+                if (!jobMaterialFind) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
+                await db.invoiceJobMaterial.create({
+                    data: {
+                        invoiceID: parseInt(id, 10),
+                        jobMaterialID: jobMaterial.id,
+                        quantity: jobMaterial.qty,
+                        price: jobMaterialFind.productCost
+                    }
+                })      
+                const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
+                total += productCostNumber * jobMaterial.qty
+                // console.log(total, `adding new material: ${jobMaterialFind.productName} ${jobMaterialFind.productCost}`)
+            }
+
+            for (const jobMaterial of toBeModified) {
+                const jobMaterialGet = await db.invoiceJobMaterial.findFirst({where: {AND: {jobMaterialID: jobMaterial.id, invoiceID: parseInt(id, 10)}}})
+                if (jobMaterialGet) {
+                    await db.invoiceJobMaterial.update({
+                        where: {id: jobMaterialGet.id},
+                        data: {quantity: jobMaterial.qty}
+                    })
+                    total += parseFloat(jobMaterialGet.price.toString()) * jobMaterial.qty
+                    // console.log(total, `modifying material: ${parseFloat(jobMaterialGet.price.toString()) * jobMaterial.qty}`)
+                }
+            }
+
+            for (const jobMaterial of toBeUnchanged) {
+                total += parseFloat(jobMaterial.price.toString()) * jobMaterial.quantity
+                // console.log(total, `unchanged material: ${parseFloat(jobMaterial.price.toString()) * jobMaterial.quantity}`)
+            }
+
+            for (const jobMaterial of toBeRemoved) {
+                await db.invoiceJobMaterial.delete({where: {id: jobMaterial.id}})
+            }
+
+            if (discount) {
+                if (discount_type == "AMOUNT") total -= parseFloat(discount)
+                if (discount_type == "PERCENTAGE") total -= total * (parseFloat(discount)/100)
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+                // console.log(total, `discount new ${discount}`)
+            } else {
+                if (invoice.discount) {
+                    if (invoice.discountType == "AMOUNT") total -= parseFloat(invoice.discount.toString())
+                    if (invoice.discountType == "PERCENTAGE") total -= total * (parseFloat(invoice.discount.toString())/100)
+                // console.log(total, `discount old ${invoice.discount}`)
+            }
+            }
+
+            if (vat) {
+                data["vat"] = parseFloat(vat);
+                // console.log(total, `vat new ${total * (parseFloat(vat)/100)}`)
+                total += total * (parseFloat(vat)/100)
+            } else if (invoice.vat) {
+                // console.log(total, `vat old ${total * (parseFloat(invoice.vat.toString())/100)}`)
+                total += total * (parseFloat(invoice.vat.toString())/100)
+            } else {
+                // console.log(total, `vat old ${total * (7.5)/100}`)
+                total += total * (7.5/100)
+            }
+
+            data["amount"] = total
+            // console.log(total,"total")
             const updatedInvoice = await db.invoice.update({
                 where: {id: parseInt(id, 10)},
                 data
