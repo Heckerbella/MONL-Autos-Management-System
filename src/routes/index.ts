@@ -61,6 +61,7 @@ vehicleRouter.get('/types/:id', auth.auth, vehicleController.vehicleType.getType
 vehicleRouter.put('/types/:id', auth.auth, vehicleController.vehicleType.updateType)
 vehicleRouter.delete('/types/:id', auth.auth, vehicleController.vehicleType.deleteType)
 vehicleRouter.get('/:id', auth.auth, vehicleController.vehicle.getVehicle)
+vehicleRouter.put('/:id/new-owner/:customerID', auth.auth, vehicleController.vehicle.transferVehicleOwnership)
 customerRouter.get('/:customerID/vehicles', auth.auth, vehicleController.vehicle.getCustomerVehicles)
 customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.getCustomerVehicle)
 customerRouter.put('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.updateCustomerVehicle)

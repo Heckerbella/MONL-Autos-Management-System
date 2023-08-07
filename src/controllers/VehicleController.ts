@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 
@@ -299,6 +300,29 @@ class Vehicle {
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
         
+    }
+
+    async transferVehicleOwnership (req: Request, res: Response) {
+        const {id, customerID} = req.params
+        const data: Prisma.VehicleUncheckedUpdateInput = {
+            ownerID: parseInt(customerID, 10)
+        }
+
+        try {
+            const vehicle = await db.vehicle.update({
+                where: {
+                    id: parseInt(id, 10)
+                },
+                data
+            })
+
+            if (vehicle) {
+                res.status(200).json({data: vehicle, msg: "Vehicle Updated Sucessfully."});
+            }
+            
+        } catch (error) {
+            res.status(500).json({error_code: 500, msg: "Internal server error."})
+        }
     }
 
     async deleteCustomerVehicle (req: Request, res: Response) {

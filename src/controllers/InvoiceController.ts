@@ -267,10 +267,12 @@ class InvoiceController {
                     },
                     materials: {
                         select: {
+                            id: true,
                             price: true,
                             quantity: true,
                             jobMaterial: {
                                 select: {
+                                    id: true,
                                     productName: true
                                 }
                             }
@@ -411,6 +413,10 @@ class InvoiceController {
             const user = await db.user.findUnique({where: {email: detokenizedEmail}})
             if (user) data["updatedByID"] = user.id
 
+            if (job_id) {
+                const job = await db.job.findUnique({where: {id: job_id}})
+                if (job) data["jobID"] = job.id
+            }
             const updatedInvoice = await db.invoice.update({
                 where: {id: parseInt(id, 10)},
                 data
