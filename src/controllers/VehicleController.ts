@@ -16,7 +16,7 @@ class Vehicle {
         } = req.body
 
         if (
-            !owner_id || !model_no || !model_name || !chassis_no || !license_plate || !vehicle_type_id || !mileage
+            !owner_id || !model_name || !chassis_no || !license_plate || !vehicle_type_id || !mileage
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
@@ -57,8 +57,15 @@ class Vehicle {
     }
 
     async getVehicles (req: Request, res: Response) {
+        const license = req.query?.name?.toString() ?? ""
         try {
             const vehicles = await db.vehicle.findMany({
+                where: {
+                    licensePlate: {
+                        contains: license,
+                        mode: "insensitive"
+                    }
+                },
                 select: {
                     id: true,
                     modelNo: true,
