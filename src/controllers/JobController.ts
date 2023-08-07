@@ -111,7 +111,9 @@ class Job  {
                             chasisNo: true,
                         }
                     },
-                    deliveryDate: true
+                    deliveryDate: true,
+                    createdAt: true,
+                    updatedAt: true
                 },
                 orderBy: {
                     id: 'asc'
@@ -153,7 +155,9 @@ class Job  {
                             chasisNo: true,
                         }
                     },
-                    deliveryDate: true
+                    deliveryDate: true,
+                    createdAt: true,
+                    updatedAt: true
                 }
             });
             if (!job) {

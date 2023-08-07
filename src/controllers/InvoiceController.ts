@@ -68,6 +68,7 @@ class InvoiceController {
         const {
             job_type_id,
             description,
+            job_id,
             due_date,
             customer_id,
             vehicle_id,
@@ -76,6 +77,7 @@ class InvoiceController {
             vat,
             discount,
             discount_type,
+            detokenizedEmail
         } = req.body
 
         if (
@@ -137,12 +139,19 @@ class InvoiceController {
             if (vat) {
                 data["vat"] = parseFloat(vat);
                 total += total * (parseFloat(vat)/100)
-            } else {
-                total += total * (7.5/100)
             }
 
             data["amount"] = total
             // console.log(data)
+
+            const user = await db.user.findUnique({where: {email: detokenizedEmail}})
+            if (user) data["createdByID"] = user.id
+
+            if (job_id) {
+                const job = await db.job.findUnique({where: {id: job_id}})
+                if (job) data["jobID"] = job.id
+            }
+
 
             const invoice = await db.invoice.create({
                 data
@@ -179,6 +188,7 @@ class InvoiceController {
                 dueDate: true,
                 materials: true,
                 vat: true,
+                job: true,
                 discount: true,
                 amount: true,
                 discountType: true,
@@ -200,7 +210,7 @@ class InvoiceController {
                 },
             },
             orderBy: {
-                id: 'asc'
+                invoiceNo: 'desc'
             }
         });
             res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
@@ -224,6 +234,7 @@ class InvoiceController {
                     serviceCharge: true,
                     vat: true,
                     discount: true,
+                    job: true,
                     amount: true,
                     discountType: true,
                     customer: {
@@ -234,7 +245,12 @@ class InvoiceController {
                             phone: true,
                             billingAddress: true,
                             companyContact: true,
-                            companyName: true
+                            companyName: true,
+                            customerType: {
+                                select: {
+                                    name: true,
+                                }
+                            }
                         }
                     },
                     vehicle: {
@@ -282,7 +298,9 @@ class InvoiceController {
             discount,
             discount_type,
             materials,
-            vat
+            vat,
+            job_id,
+            detokenizedEmail
         } = req.body
         
         try {
@@ -386,13 +404,13 @@ class InvoiceController {
             } else if (invoice.vat) {
                 // console.log(total, `vat old ${total * (parseFloat(invoice.vat.toString())/100)}`)
                 total += total * (parseFloat(invoice.vat.toString())/100)
-            } else {
-                // console.log(total, `vat old ${total * (7.5)/100}`)
-                total += total * (7.5/100)
             }
 
             data["amount"] = total
             // console.log(total,"total")
+            const user = await db.user.findUnique({where: {email: detokenizedEmail}})
+            if (user) data["updatedByID"] = user.id
+
             const updatedInvoice = await db.invoice.update({
                 where: {id: parseInt(id, 10)},
                 data

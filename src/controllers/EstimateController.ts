@@ -78,8 +78,6 @@ class EstimateController {
             if (vat) {
                 data["vat"] = parseFloat(vat);
                 total += total * (parseFloat(vat)/100)
-            } else {
-                total += total * (7.5/100)
             }
 
             data["amount"] = total
@@ -114,7 +112,6 @@ class EstimateController {
             const estimates = await db.estimate.findMany({ select: {
                 id: true,
                 estimateNo: true,
-                paid: true,
                 description: true,
                 createdAt: true,
                 dueDate: true,
@@ -158,7 +155,6 @@ class EstimateController {
                 select: {
                     id: true,
                     estimateNo: true,
-                    paid: true,
                     description: true,
                     createdAt: true,
                     dueDate: true,
@@ -231,7 +227,6 @@ class EstimateController {
 
             if (!estimate) return res.status(404).json({ error_code: 404, msg: 'Estimate not found.' });
 
-            if (estimate.paid == true) res.status(400).json({error_code: 400, msg: "Estimate cannot be edited"})
             const data: Prisma.EstimateUncheckedCreateInput = {} as Prisma.EstimateUncheckedCreateInput
     
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
@@ -258,7 +253,6 @@ class EstimateController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            if (paid) data['paid'] = paid
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
 
             
@@ -327,9 +321,6 @@ class EstimateController {
             } else if (estimate.vat) {
                 // console.log(total, `vat old ${total * (parseFloat(estimate.vat.toString())/100)}`)
                 total += total * (parseFloat(estimate.vat.toString())/100)
-            } else {
-                // console.log(total, `vat old ${total * (7.5)/100}`)
-                total += total * (7.5/100)
             }
 
             data["amount"] = total
