@@ -188,10 +188,12 @@ class EstimateController {
                     },
                     materials: {
                         select: {
+                            id: true,
                             price: true,
                             quantity: true,
                             jobMaterial: {
                                 select: {
+                                    id: true,
                                     productName: true
                                 }
                             }
