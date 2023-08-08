@@ -66,6 +66,7 @@ customerRouter.get('/:customerID/vehicles', auth.auth, vehicleController.vehicle
 customerRouter.get('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.getCustomerVehicle)
 customerRouter.put('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.updateCustomerVehicle)
 customerRouter.delete('/:customerID/vehicles/:vehicleID', auth.auth, vehicleController.vehicle.deleteCustomerVehicle)
+customerRouter.get('/:customerID/jobs', auth.auth, jobController.job.getJobs)
 
 
 // Job Section

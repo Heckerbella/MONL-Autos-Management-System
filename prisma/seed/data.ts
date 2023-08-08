@@ -8,7 +8,7 @@ const encodedpassword = Buffer.from(password as string, 'utf8').toString("base64
 
 export const user = {
     id: 1,
-    email: 'admin@gmail.com',
+    email: 'admin@monlautos.com',
     password: encodedpassword,
     roleID: 1
 }

@@ -170,6 +170,7 @@ model Invoice {
 model InvoiceDraft {
   id            Int                       @id @default(autoincrement())
   description   String?
+  dueDate       DateTime?
   customer      Customer?                 @relation(fields: [customerID], references: [id])
   customerID    Int?
   jobType       JobType?                  @relation(fields: [jobTypeID], references: [id])

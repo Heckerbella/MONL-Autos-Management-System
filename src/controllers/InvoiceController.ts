@@ -447,5 +447,57 @@ class InvoiceController {
 
 }
 
+class InvoiceDraft {
+    async createDraft(req: Request, res: Response) {
+        const {
+            job_type_id,
+            description,
+            job_id,
+            due_date,
+            customer_id,
+            vehicle_id,
+            materials,
+            service_charge,
+            vat,
+            discount,
+            discount_type,
+        } = req.body
+
+        if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
+
+        try {
+            const data: Prisma.InvoiceDraftUncheckedCreateInput = {} as Prisma.InvoiceDraftUncheckedCreateInput
+            if (job_type_id) data.jobTypeID = parseInt(job_type_id, 10)
+            if (description) data.description = description
+            if (job_id) data.jobID = parseInt(job_id, 10)
+            if (due_date) data.dueDate = (new Date(due_date)).toISOString()
+            if (customer_id) data.customerID = parseInt(customer_id, 10)
+            if (vehicle_id) data.vehicleID = parseInt(vehicle_id, 10)
+            if (service_charge) data.serviceCharge = parseFloat(service_charge)
+            if (vat) data.vat = parseFloat(vat)
+            if (discount) data.discount = parseFloat(discount)
+            if (discount_type) data.discountType = discount_type
+
+            let materialIDs, jobMaterials = [];
+            if (materials) {
+                if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
+                materialIDs = convertStringToObjectArray(materials)
+
+                for (const item of materialIDs) {
+                    const { id, qty } = item
+                    const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
+                    if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
+                    jobMaterials.push(jobMaterial)
+                }
+            }
+            
+        } catch (error) {
+            
+        }
+
+
+    }
+}
+
 const invoiceController = new InvoiceController();
 export default invoiceController;
