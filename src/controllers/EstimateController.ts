@@ -165,6 +165,7 @@ class EstimateController {
                     discountType: true,
                     customer: {
                         select: {
+                            id: true,
                             firstName: true,
                             lastName: true,
                             email: true,
