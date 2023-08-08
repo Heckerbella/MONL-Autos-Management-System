@@ -79,7 +79,7 @@ class Job  {
     }
 
     async getJobs (req: Request, res: Response) {
-        const {customerID}  = req.query;
+        const {customerID}  = req.params;
 
         if (customerID && isNaN(parseInt(customerID as string, 10))) return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
         const filterOptions: Prisma.JobWhereInput = customerID ? {customerID: parseInt(customerID as string, 10)} : {}

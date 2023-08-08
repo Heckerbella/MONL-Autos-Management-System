@@ -77,7 +77,8 @@ class InvoiceController {
             vat,
             discount,
             discount_type,
-            detokenizedEmail
+            detokenizedEmail,
+            draft_id
         } = req.body
 
         if (
@@ -169,6 +170,8 @@ class InvoiceController {
                     })
                 }
             }
+
+            if (draft_id) await db.invoiceDraft.delete({where: {id: parseInt(draft_id, 10)}})
 
             res.status(201).json({data: invoice, msg: "Invoice created successfully."});
         } catch (error) {
@@ -490,12 +493,37 @@ class InvoiceDraft {
                     jobMaterials.push(jobMaterial)
                 }
             }
-            
+
+            const invoiceDraft = await db.invoiceDraft.create({
+                data
+            })
+
+            if (invoiceDraft && jobMaterials) {
+                for (const mat of jobMaterials) {
+                    await db.invoiceDraftJobMaterial.create({
+                        data: {
+                            draftID: invoiceDraft.id,
+                            jobMaterialID: mat.id,
+                            quantity: materialIDs?.find((item) => item.id == mat.id)?.qty,
+                            price: mat.productCost
+                        }
+                    })
+                }
+            }
+
+            res.status(201).json({data: invoiceDraft, msg: "Invoice Draft created successfully."});
+
         } catch (error) {
-            
+            res.status(400).json({ error_code: 400, msg: 'Could not create invoice.' });
         }
+    }
 
-
+    async getDrafts (req: Request, res: Response) {
+        try {
+            const drafts = await db.invoiceDraft.findMany()
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoice drafts.' });
+        }
     }
 }
 
