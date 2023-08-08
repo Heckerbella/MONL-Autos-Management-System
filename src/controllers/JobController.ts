@@ -19,7 +19,7 @@ class Job  {
             });
             res.status(200).json({data: jobTypes});
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not get vehicle types.' });
+            res.status(400).json({ error_code: 400, msg: 'Could not get job types.' });
         }
     }
 
@@ -200,6 +200,7 @@ class Job  {
             res.status(400).json({ error_code: 400, msg: 'Could not update job.' });
         }
     }
+
 
     async deleteJob (req: Request, res: Response) {
         const {id} = req.params

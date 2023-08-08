@@ -150,8 +150,8 @@ model Invoice {
   jobTypeID     Int?
   vehicle       Vehicle              @relation(fields: [vehicleID], references: [id])
   vehicleID     Int
-  job           Job?                  @relation(fields: [jobID], references: [id])
-  jobID         Int?                  @unique
+  job           Job?                 @relation(fields: [jobID], references: [id])
+  jobID         Int?                 @unique
   amount        Decimal              @default(0) @db.Decimal(10, 2)
   paid          Boolean              @default(false)
   createdAt     DateTime             @default(now())
@@ -159,8 +159,8 @@ model Invoice {
   updatedAt     DateTime             @updatedAt
   discountType  DiscountType?
   vat           Decimal?             @default(7.5) @db.Decimal(6, 1)
-  discount      Decimal?             @default(0) @db.Decimal(6, 2)
-  createdBy     User?                 @relation(name: "createdby", fields: [createdByID], references: [id])
+  discount      Float?               @default(0)
+  createdBy     User?                @relation(name: "createdby", fields: [createdByID], references: [id])
   createdByID   Int?
   updatedBy     User?                @relation(name: "updatedby", fields: [updatedByID], references: [id])
   updatedByID   Int?
@@ -183,7 +183,7 @@ model InvoiceDraft {
   updatedAt     DateTime                  @updatedAt
   discountType  DiscountType?
   vat           Decimal?                  @default(7.5) @db.Decimal(6, 1)
-  discount      Decimal?                  @default(0) @db.Decimal(6, 2)
+  discount      Float?                    @default(0)
   materials     InvoiceDraftJobMaterial[]
 }
 
@@ -240,6 +240,6 @@ model Estimate {
   updatedAt     DateTime              @updatedAt
   discountType  DiscountType?
   vat           Decimal?              @default(0) @db.Decimal(6, 1)
-  discount      Decimal?              @default(0) @db.Decimal(6, 2)
+  discount      Float?                @default(0)
   materials     EstimateJobMaterial[]
 }
