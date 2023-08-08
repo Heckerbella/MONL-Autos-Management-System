@@ -163,7 +163,6 @@ class EstimateController {
                     discount: true,
                     amount: true,
                     discountType: true,
-                    customerType: true,
                     customer: {
                         select: {
                             id: true,
@@ -173,7 +172,8 @@ class EstimateController {
                             phone: true,
                             billingAddress: true,
                             companyContact: true,
-                            companyName: true
+                            companyName: true,
+                            customerType: true
                         }
                     },
                     vehicle: {
