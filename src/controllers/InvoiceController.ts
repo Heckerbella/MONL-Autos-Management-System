@@ -521,8 +521,189 @@ class InvoiceDraft {
     async getDrafts (req: Request, res: Response) {
         try {
             const drafts = await db.invoiceDraft.findMany()
+            res.status(200).json({data: drafts, msg: "Invoic drafts retrieved successfully."});
+
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoice drafts.' });
+        }
+    }
+
+    async getDraft (req: Request, res: Response) {
+        const { id } = req.params;
+        try {
+            const draft = await db.invoiceDraft.findUnique({ 
+                where: { id: parseInt(id, 10) },
+                select: {
+                    id: true,
+                    description: true,
+                    createdAt: true,
+                    dueDate: true,
+                    serviceCharge: true,
+                    vat: true,
+                    discount: true,
+                    job: true,
+                    discountType: true,   
+                    customer: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone: true,
+                            billingAddress: true,
+                            companyContact: true,
+                            companyName: true,
+                            customerType: {
+                                select: {
+                                    name: true,
+                                }
+                            }
+                        }
+                    },
+                    vehicle: {
+                        select: {
+                            modelNo: true,
+                            modelName: true,
+                            licensePlate: true
+                        }
+                    },
+                    jobType: {
+                        select: {
+                            name: true
+                        }
+                    },
+                    materials: {
+                        select: {
+                            id: true,
+                            price: true,
+                            quantity: true,
+                            jobMaterial: {
+                                select: {
+                                    id: true,
+                                    productName: true
+                                }
+                            }
+                        }
+                    }            
+                }
+             });
+            if (!draft) {
+                return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
+            }
+            res.status(200).json({data: draft, msg: "Draft retrieved successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not retrieve draft.' });
+        }   
+    }
+
+    async updateInvoice (req: Request, res: Response) {
+        const { id } = req.params;
+        const {
+            description,
+            due_date,
+            job_type_id,
+            service_charge,
+            discount,
+            discount_type,
+            materials,
+            vat,
+            job_id,
+        } = req.body
+        
+        try {
+            const draft = await db.invoiceDraft.findUnique({where: {id: parseInt(id, 10)}})
+
+            if (!draft) return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
+
+            const data: Prisma.InvoiceUncheckedCreateInput = {} as Prisma.InvoiceUncheckedCreateInput
+    
+            if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
+            if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
+            if (description) data['description'] = description
+            if (job_type_id) {
+                const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
+                if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
+                data['jobTypeID'] = parseInt(job_type_id, 10)
+            }
+    
+            if (service_charge) {
+                data["serviceCharge"] = parseFloat(service_charge)
+            }
+
+            if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
+            if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
+            if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
+
+            if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
+
+            const jobMaterials = await db.invoiceJobMaterial.findMany({where: {invoiceID: parseInt(id, 10)}});
+            const updateJobMaterials = convertStringToObjectArray(materials);
+            
+            const {toBeAdded, toBeModified, toBeUnchanged, toBeRemoved} = compareArrays<InvoiceJobMaterial>(updateJobMaterials, jobMaterials);
+
+            for (const jobMaterial of toBeAdded) {
+                const jobMaterialFind = await db.jobMaterial.findUnique({where: {id: jobMaterial.id}})
+                if (!jobMaterialFind) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
+                await db.invoiceJobMaterial.create({
+                    data: {
+                        invoiceID: parseInt(id, 10),
+                        jobMaterialID: jobMaterial.id,
+                        quantity: jobMaterial.qty,
+                        price: jobMaterialFind.productCost
+                    }
+                })      
+            }
+
+            for (const jobMaterial of toBeModified) {
+                const jobMaterialGet = await db.invoiceJobMaterial.findFirst({where: {AND: {jobMaterialID: jobMaterial.id, invoiceID: parseInt(id, 10)}}})
+                if (jobMaterialGet) {
+                    await db.invoiceJobMaterial.update({
+                        where: {id: jobMaterialGet.id},
+                        data: {quantity: jobMaterial.qty}
+                    })
+                }
+            }
+
+
+            for (const jobMaterial of toBeRemoved) {
+                await db.invoiceJobMaterial.delete({where: {id: jobMaterial.id}})
+            }
+
+            if (discount) {
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+            }
+
+            if (vat) {
+                data["vat"] = parseFloat(vat);
+            }
+
+            if (job_id) {
+                const job = await db.job.findUnique({where: {id: job_id}})
+                if (job) data["jobID"] = job.id
+            }
+            const updatedInvoiceDraft = await db.invoiceDraft.update({
+                where: {id: parseInt(id, 10)},
+                data
+            })
+            res.status(200).json({data: updatedInvoiceDraft, msg: "Invoice Draft updated successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not update draft.' });
+        }
+    }
+
+    async deleteDraft (req: Request, res: Response) {
+        try {
+            const draft = await db.invoiceDraft.delete({
+                where: {
+                    id: parseInt(req.params.id, 10)
+                }
+            });
+            if (!draft) {
+                return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
+            }
+            res.status(200).json({data: draft, msg: "Draft deleted successfully."});
+        } catch (error) {
+            res.status(400).json({ error_code: 400, msg: 'Could not delete draft.' });
         }
     }
 }
