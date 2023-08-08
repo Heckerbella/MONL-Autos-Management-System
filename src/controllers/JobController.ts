@@ -243,26 +243,32 @@ class JobMaterial {
         }
     }
 
-    async getMaterials (req: Request, res: Response) {
-        const name = req.query?.name?.toString() ?? ""
+    async getMaterials(req: Request, res: Response) {
+        const name = req.query?.name?.toString() ?? "";
+        const page = parseInt(req.query?.page?.toString() ?? "1");
+        const itemsPerPage = 100;
+      
         try {
-            const materials = await db.jobMaterial.findMany({
-                where: {
-                    productName: {
-                        contains: name,
-                        mode: "insensitive"
-                    }
-                },
-                orderBy: {
-                    id: 'asc'
-                }
-            });
-            res.status(200).json({data: materials});
+          const materials = await db.jobMaterial.findMany({
+            where: {
+              productName: {
+                contains: name,
+                mode: "insensitive",
+              },
+            },
+            orderBy: {
+              id: 'asc',
+            },
+            skip: (page - 1) * itemsPerPage, // Calculate the offset
+            take: itemsPerPage, // Limit the number of items per page
+          });
+      
+          res.status(200).json({ data: materials });
         } catch (error) {
-            // console.log(error)
-            res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
+          res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
     }
+      
 
     async getMaterial (req: Request, res: Response) {
         const { id } = req.params;
