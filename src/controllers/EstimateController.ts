@@ -163,6 +163,7 @@ class EstimateController {
                     discount: true,
                     amount: true,
                     discountType: true,
+                    customerType: true,
                     customer: {
                         select: {
                             id: true,
