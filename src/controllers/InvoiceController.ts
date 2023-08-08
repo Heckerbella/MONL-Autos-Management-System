@@ -193,6 +193,8 @@ class InvoiceController {
                 amount: true,
                 discountType: true,
                 customerID: true,
+                createdBy: true,
+                updatedBy: true,
                 customer: {
                     select: {
                         firstName: true,
@@ -236,7 +238,9 @@ class InvoiceController {
                     discount: true,
                     job: true,
                     amount: true,
-                    discountType: true,
+                    discountType: true,   
+                    createdBy: true,
+                    updatedBy: true,
                     customer: {
                         select: {
                             firstName: true,
