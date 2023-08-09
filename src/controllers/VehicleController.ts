@@ -72,6 +72,7 @@ class Vehicle {
                     modelName: true,
                     engineNo: true,
                     chasisNo: true,
+                    mileage: true,
                     licensePlate: true,
                     ownerID: true,
                     vehicleTypeID: true,
