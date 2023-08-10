@@ -20,12 +20,12 @@ app.use('/api/v1/', router);
 function runTaskAt9AM() {
   // Schedule the task to run every day at 9 AM (server's local time)
   console.log("scheduling cron job")
-  cron.scheduleTz('0 9 * * 1-6', 'Africa/Lagos', () => {
+  cron.schedule('0 9 * * 1-6', () => {
     // This function will be called every day at 9 AM
     console.log('Running the task every day except Sundays at 9 AM in Lagos timezone');
     // Call your function here
     triggerNotification()
-  });
+  }, {timezone: 'Africa/Lagos'});
 }
 
 app.listen(PORT, () => {
