@@ -292,15 +292,17 @@ class JobMaterial {
 
         const jobMaterial = await db.jobMaterial.findUnique({where: {id: parseInt(id, 10)}})
         if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Job material not found.' });
+
+        const data: Prisma.JobMaterialUncheckedUpdateInput = {} as Prisma.JobMaterialUncheckedUpdateInput;
+        if (name) data.productName = name;
+        if (cost) data.productCost = parseFloat(cost);
         
         try {
             const jobMaterial = await db.jobMaterial.update({
                 where: {
                     id: parseInt(id, 10)
                 },
-                data: {
-                    productCost: parseFloat(cost)
-                }
+                data
             })
 
             res.status(200).json({data: jobMaterial, msg: "Job material updated successfully."});
