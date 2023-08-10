@@ -17,6 +17,7 @@ model User {
   role            Role      @relation(fields: [roleID], references: [id])
   roleID          Int
   createdAt       DateTime  @default(now())
+  subscriberID    String?   @unique
   updatedAt       DateTime  @default(now()) @updatedAt
   invoicesCreated Invoice[] @relation(name: "createdby")
   invoicesUpdated Invoice[] @relation(name: "updatedby")

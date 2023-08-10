@@ -262,8 +262,11 @@ class JobMaterial {
             skip: (page - 1) * itemsPerPage, // Calculate the offset
             take: itemsPerPage, // Limit the number of items per page
           });
+
+              // Check if the number of items returned is less than itemsPerPage
+    const isLastPage = materials.length < itemsPerPage;
       
-          res.status(200).json({ data: materials });
+          res.status(200).json({ data: materials, isLastPage });
         } catch (error) {
           res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
@@ -291,7 +294,6 @@ class JobMaterial {
         if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Job material not found.' });
         
         try {
-            if (!cost) return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
             const jobMaterial = await db.jobMaterial.update({
                 where: {
                     id: parseInt(id, 10)

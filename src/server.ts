@@ -1,7 +1,8 @@
 import express from 'express';
 import router from './routes';
 import cors from 'cors'
-
+import { triggerNotification } from './utils/novuModule';
+const cron = require('node-cron');
 
 
 
@@ -16,7 +17,18 @@ app.use(cors({
 
 app.use('/api/v1/', router);
 
+function runTaskAt9AM() {
+  // Schedule the task to run every day at 9 AM (server's local time)
+  console.log("scheduling cron job")
+  cron.scheduleTz('0 9 * * 1-6', 'Africa/Lagos', () => {
+    // This function will be called every day at 9 AM
+    console.log('Running the task every day except Sundays at 9 AM in Lagos timezone');
+    // Call your function here
+    triggerNotification()
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`);
+  runTaskAt9AM()
 });

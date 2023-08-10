@@ -1,5 +1,7 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
+import { generateUniqueId } from "../utils/general";
+import { addSubscriberToTopic } from "../utils/novuModule";
 
 class UserController {
     async createUser (req: Request, res: Response) {
@@ -13,16 +15,23 @@ class UserController {
                     let user = await db.user.findUnique({where : { email}})
 
                     if (user) return res.status(400).json({ error_code: 400, msg: 'User already exists.' })
+
+                    let subID = generateUniqueId()
+                    while ((await db.user.findUnique({where: {subscriberID: subID}}))) {
+                        subID = generateUniqueId()
+                    }
     
                      user = await db.user.create({data: {
                         email: email as string,
                         password: Buffer.from(password as string, 'utf8').toString("base64"),
+                        subscriberID: subID,
                         roleID: 2
                     }})
             
                     if (user) {
                         // decode password
                         user.password = Buffer.from(user.password, 'base64').toString('utf8');
+                        await (user.subscriberID && addSubscriberToTopic([user.subscriberID]))
                         res.status(201).json({data: user, msg: "User created successfully."});
                     } else {
                         res.status(400).json({ error_code: 400, msg: 'Could not create user.'});
