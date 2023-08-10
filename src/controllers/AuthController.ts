@@ -22,6 +22,7 @@ class Auth {
                         data: {
                             id: user.id,
                             email: user.email,
+                            subscriberId: user.subscriberID,
                             access_token: token,
                             refresh_token: refreshToken
                         }
