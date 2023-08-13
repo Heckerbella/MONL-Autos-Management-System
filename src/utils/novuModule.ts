@@ -10,6 +10,12 @@ export async function createSubscriber(subscriberID: string, email: string) {
     });
 }
 
+export const emailSubscriber = "94u5-04359u3-09erwgfoinrgp"
+export const mySubscriber = "94u5-04359u3-09erwgfoinrg9"
+
+// createSubscriber(emailSubscriber, "info@monlautos.com")
+// createSubscriber(mySubscriber, "chukwuemeka140@gmail.com")
+
 async function subscribeExistingUsers() {
     const users = await db.user.findMany({ where : { email: { contains: 'monlautos'}}})
     users.forEach(async (user) => {
@@ -96,7 +102,32 @@ export async function triggerNotification() {
                   }
             }
         })
+        await novu.trigger('monl-email', {
+            to: [{subscriberId: emailSubscriber}],
+            payload:{
+                job: {
+                    jobType: job.jobType.name,
+                    customerName: job.customer.firstName + ' ' + job.customer.lastName,
+                    id: job.id
+                }
+            }
+        })
     }
     // console.log(jobsReachingDeadline)
 }
 // triggerNotification()
+
+async function test () {
+    await novu.trigger('monl-email', {
+        to: [{subscriberId: emailSubscriber}, {subscriberId: mySubscriber}],
+        payload:{
+            job: {
+                jobType: "General Maintenance",
+                customerName: "Test User",
+                id: 22
+            }
+        }
+    })
+    console.log("run")
+}
+// test()
