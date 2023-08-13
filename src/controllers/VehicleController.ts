@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
+import { isValidDate } from "../utils/general";
 
 class Vehicle {
     async createVehicle (req: Request, res: Response) {
@@ -58,13 +59,36 @@ class Vehicle {
 
     async getVehicles (req: Request, res: Response) {
         const license = req.query?.name?.toString() ?? ""
+        const startDatetime = req.body?.start;
+        const endDatetime = req.body?.end;
+
+
+        if ((startDatetime && !endDatetime) || (!startDatetime && endDatetime)) {
+            return res.status(400).json({ error_code: 400, msg: 'start and end datetime must be provided' });
+        }
+
+
+        if ((startDatetime && !isValidDate(startDatetime)) || (endDatetime && !isValidDate(endDatetime))) {
+            return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
+        }
+
         try {
+            let queryOptions: {[key: string]: any} = {}
+            if (startDatetime && endDatetime) {
+                queryOptions = {
+                  createdAt: {
+                    gte: new Date(startDatetime),
+                    lte: new Date(endDatetime),
+                  },
+                };
+              }
             const vehicles = await db.vehicle.findMany({
                 where: {
                     licensePlate: {
                         contains: license,
                         mode: "insensitive"
-                    }
+                    },
+                    ...queryOptions
                 },
                 select: {
                     id: true,
@@ -74,6 +98,8 @@ class Vehicle {
                     chasisNo: true,
                     mileage: true,
                     licensePlate: true,
+                    createdAt: true,
+                    updatedAt: true,
                     ownerID: true,
                     vehicleTypeID: true,
                     owner: {

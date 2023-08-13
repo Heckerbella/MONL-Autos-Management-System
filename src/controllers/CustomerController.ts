@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "../utils/prismaClient";
 import { Request, Response } from "express";
+import { isValidDate } from "../utils/general";
 
 class CustomerController {
     async createCustomer(req: Request, res: Response) {
@@ -139,17 +140,67 @@ class CustomerController {
     }
 
     async getCustomers(req: Request, res: Response) {
+        const page = req.query?.page ? parseInt(req.query.page.toString()) : undefined;
+        const limit = req.query?.limit ? parseInt(req.query.limit.toString()) : undefined;
+        const startDatetime = req.body?.start;
+        const endDatetime = req.body?.end;
+
+
+        if ((startDatetime && !endDatetime) || (!startDatetime && endDatetime)) {
+            return res.status(400).json({ error_code: 400, msg: 'start and end datetime must be provided' });
+        }
+
+
+        if ((startDatetime && !isValidDate(startDatetime)) || (endDatetime && !isValidDate(endDatetime))) {
+            return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
+        }
+
         try {
-            const customers = await db.customer.findMany({
+            let customers;
+            let totalCount;
+
+
+            if (page !== undefined && limit !== undefined) {
+            // Pagination is requested
+            totalCount = await db.customer.count();
+
+            // Retrieve customers with pagination
+            customers = await db.customer.findMany({
                 orderBy: {
-                    id: 'asc'
-                }
+                id: 'asc',
+                },
+                skip: (page - 1) * limit, // Calculate the offset
+                take: limit, // Limit the number of items per page
             });
-            res.status(200).json({data: customers});
+
+            // Check if the number of items returned is less than the specified limit
+            const isLastPage = customers.length < limit;
+
+            res.status(200).json({ data: customers, totalCount, isLastPage });
+            } else {
+            // No pagination
+            const queryOptions: Prisma.CustomerFindManyArgs = {}
+            if (startDatetime && endDatetime) {
+                queryOptions.where = {
+                  createdAt: {
+                    gte: new Date(startDatetime),
+                    lte: new Date(endDatetime),
+                  },
+                };
+              }
+            customers = await db.customer.findMany({
+                ...queryOptions,
+                orderBy: {
+                id: 'asc',
+                },
+            });
+            res.status(200).json({ data: customers });
+            }
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get customers.' });
         }
     }
+
 
     async getCustomer(req: Request, res: Response) {
         const { id } = req.params;

@@ -79,51 +79,134 @@ class Job  {
     }
 
     async getJobs (req: Request, res: Response) {
-        const {customerID}  = req.params;
+        const { customerID } = req.params;
+        const page = req.query?.page ? parseInt(req.query.page.toString()) : undefined;
+        const limit = req.query?.limit ? parseInt(req.query.limit.toString()) : undefined;
+        const startDatetime = req.body?.start;
+        const endDatetime = req.body?.end;
 
-        if (customerID && isNaN(parseInt(customerID as string, 10))) return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
-        const filterOptions: Prisma.JobWhereInput = customerID ? {customerID: parseInt(customerID as string, 10)} : {}
+        if (customerID && isNaN(parseInt(customerID, 10))) {
+            return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
+        }
+
+        if ((startDatetime && !endDatetime) || (!startDatetime && endDatetime)) {
+            return res.status(400).json({ error_code: 400, msg: 'start and end datetime must be provided' });
+        }
+
+
+        if ((startDatetime && !isValidDate(startDatetime)) || (endDatetime && !isValidDate(endDatetime))) {
+            return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
+        }
+        
+        let filterOptions: {[key: string]: any} = customerID ? { customerID: parseInt(customerID, 10) } : {};
+        
         try {
-            const jobs = await db.job.findMany({
+            let jobs;
+            let totalCount;
+        
+            if (page !== undefined && limit !== undefined) {
+            // Pagination is requested
+            totalCount = await db.job.count({
+                where: filterOptions,
+            });
+        
+            // Retrieve jobs with pagination
+            jobs = await db.job.findMany({
                 where: filterOptions,
                 select: {
-                    id: true,
-                    jobTypeID: true,
-                    status: true,
-                    jobType: {
-                        select: {
-                            name: true
-                        }
+                id: true,
+                jobTypeID: true,
+                status: true,
+                jobType: {
+                    select: {
+                    name: true,
                     },
-                    customerID: true,
-                    customer: {
-                        select: {
-                            firstName: true,
-                            lastName: true
-                        }
+                },
+                customerID: true,
+                customer: {
+                    select: {
+                    firstName: true,
+                    lastName: true,
                     },
-                    vehicleID: true,
-                    vehicle: {
-                        select: {
-                            modelNo: true,
-                            modelName: true,
-                            licensePlate: true,
-                            chasisNo: true,
-                        }
+                },
+                vehicleID: true,
+                vehicle: {
+                    select: {
+                    modelNo: true,
+                    modelName: true,
+                    licensePlate: true,
+                    chasisNo: true,
                     },
-                    deliveryDate: true,
-                    createdAt: true,
-                    updatedAt: true
+                },
+                deliveryDate: true,
+                createdAt: true,
+                updatedAt: true,
                 },
                 orderBy: {
-                    id: 'asc'
-                }
+                id: 'asc',
+                },
+                skip: (page - 1) * limit, // Calculate the offset
+                take: limit, // Limit the number of items per page
             });
-            res.status(200).json({data: jobs});
+        
+            // Check if the number of items returned is less than the specified limit
+            const isLastPage = jobs.length < limit;
+        
+            res.status(200).json({ data: jobs, totalCount, isLastPage });
+            } else {
+            // No pagination
+            if (startDatetime && endDatetime) {
+                filterOptions = {
+                    ...filterOptions,
+                  createdAt: {
+                    gte: new Date(startDatetime),
+                    lte: new Date(endDatetime),
+                  },
+                };
+              }
+            jobs = await db.job.findMany({
+                where: filterOptions,
+                select: {
+                id: true,
+                jobTypeID: true,
+                status: true,
+                jobType: {
+                    select: {
+                    name: true,
+                    },
+                },
+                customerID: true,
+                customer: {
+                    select: {
+                    firstName: true,
+                    lastName: true,
+                    },
+                },
+                vehicleID: true,
+                vehicle: {
+                    select: {
+                    modelNo: true,
+                    modelName: true,
+                    licensePlate: true,
+                    chasisNo: true,
+                    },
+                },
+                deliveryDate: true,
+                createdAt: true,
+                updatedAt: true,
+                },
+                orderBy: {
+                id: 'asc',
+                },
+            });
+            res.status(200).json({ data: jobs });
+            }
         } catch (error) {
+            // console.log(error)
             res.status(400).json({ error_code: 400, msg: 'Could not get jobs.' });
         }
     }
+          
 
     async getJob (req: Request, res: Response) {
         const { id } = req.params;
@@ -246,31 +329,43 @@ class JobMaterial {
     async getMaterials(req: Request, res: Response) {
         const name = req.query?.name?.toString() ?? "";
         const page = parseInt(req.query?.page?.toString() ?? "1");
-        const itemsPerPage = 100;
-      
+        const limit = parseInt(req.query?.limit?.toString() ?? "100");
+        
         try {
-          const materials = await db.jobMaterial.findMany({
-            where: {
-              productName: {
-                contains: name,
-                mode: "insensitive",
-              },
-            },
-            orderBy: {
-              id: 'asc',
-            },
-            skip: (page - 1) * itemsPerPage, // Calculate the offset
-            take: itemsPerPage, // Limit the number of items per page
-          });
-
-              // Check if the number of items returned is less than itemsPerPage
-    const isLastPage = materials.length < itemsPerPage;
-      
-          res.status(200).json({ data: materials, isLastPage });
+            // Retrieve materials matching the query
+            const [materials, totalCount] = await Promise.all([
+            db.jobMaterial.findMany({
+                where: {
+                productName: {
+                    contains: name,
+                    mode: "insensitive",
+                },
+                },
+                orderBy: {
+                id: 'asc',
+                },
+                skip: (page - 1) * limit, // Calculate the offset
+                take: limit, // Limit the number of items per page
+            }),
+            db.jobMaterial.count({
+                where: {
+                productName: {
+                    contains: name,
+                    mode: "insensitive",
+                },
+                },
+            }),
+            ]);
+        
+            // Check if the number of items returned is less than the specified limit
+            const isLastPage = materials.length < limit;
+        
+            res.status(200).json({ data: materials, totalCount, isLastPage });
         } catch (error) {
-          res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
+            res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
     }
+          
       
 
     async getMaterial (req: Request, res: Response) {

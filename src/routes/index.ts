@@ -44,6 +44,7 @@ const customerRouter = express.Router();
 router.use('/customers', customerRouter);
 customerRouter.post('/', auth.auth, customerController.createCustomer)
 customerRouter.get('/', auth.auth, customerController.getCustomers)
+customerRouter.post('/report', auth.auth, customerController.getCustomers)
 customerRouter.get('/types', auth.auth, customerController.getCustomerTypes)
 customerRouter.get('/:id', auth.auth, customerController.getCustomer)
 customerRouter.put('/:id', auth.auth, customerController.updateCustomer)
@@ -55,6 +56,7 @@ const vehicleRouter = express.Router();
 router.use('/vehicles', vehicleRouter);
 vehicleRouter.post('/', auth.auth, vehicleController.vehicle.createVehicle)
 vehicleRouter.get('/', auth.auth, vehicleController.vehicle.getVehicles)
+vehicleRouter.post('/report', auth.auth, vehicleController.vehicle.getVehicles)
 vehicleRouter.post('/types', auth.auth, vehicleController.vehicleType.createType)
 vehicleRouter.get('/types', auth.auth, vehicleController.vehicleType.getTypes)
 vehicleRouter.get('/types/:id', auth.auth, vehicleController.vehicleType.getType)
@@ -74,6 +76,7 @@ const jobRouter = express.Router();
 router.use('/jobs', jobRouter);
 jobRouter.post('/', auth.auth, jobController.job.createJob)
 jobRouter.get('/', auth.auth, jobController.job.getJobs)
+jobRouter.post('/report', auth.auth, jobController.job.getJobs)
 jobRouter.get('/types', auth.auth, jobController.job.getJobTypes)
 jobRouter.get('/:id', auth.auth, jobController.job.getJob)
 jobRouter.put('/:id', auth.auth, jobController.job.updateJob)

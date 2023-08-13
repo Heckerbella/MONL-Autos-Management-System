@@ -130,3 +130,5 @@ dist
 .pnp.*
 
 seedUser.ts
+*.zip
+bundle*
