@@ -264,7 +264,9 @@ class InvoiceController {
                         select: {
                             modelNo: true,
                             modelName: true,
-                            licensePlate: true
+                            licensePlate: true,
+                            chasisNo: true,
+                            mileage: true
                         }
                     },
                     jobType: {
