@@ -330,41 +330,60 @@ class JobMaterial {
         const name = req.query?.name?.toString() ?? "";
         const page = parseInt(req.query?.page?.toString() ?? "1");
         const limit = parseInt(req.query?.limit?.toString() ?? "100");
-        
+    
         try {
-            // Retrieve materials matching the query
-            const [materials, totalCount] = await Promise.all([
-            db.jobMaterial.findMany({
-                where: {
-                productName: {
-                    contains: name,
-                    mode: "insensitive",
-                },
-                },
-                orderBy: {
-                id: 'asc',
-                },
-                skip: (page - 1) * limit, // Calculate the offset
-                take: limit, // Limit the number of items per page
-            }),
-            db.jobMaterial.count({
-                where: {
-                productName: {
-                    contains: name,
-                    mode: "insensitive",
-                },
-                },
-            }),
-            ]);
-        
-            // Check if the number of items returned is less than the specified limit
+            let materials;
+            let totalCount = 0;
+    
+            if (!req.query.page && !req.query.limit) {
+                // Fetch all materials without pagination
+                materials = await db.jobMaterial.findMany({
+                    where: {
+                        productName: {
+                            contains: name,
+                            mode: "insensitive",
+                        },
+                    },
+                    orderBy: {
+                        id: 'asc',
+                    },
+                });
+    
+                totalCount = materials.length;
+            } else {
+                // Retrieve materials matching the query with pagination
+                materials = await db.jobMaterial.findMany({
+                    where: {
+                        productName: {
+                            contains: name,
+                            mode: "insensitive",
+                        },
+                    },
+                    orderBy: {
+                        id: 'asc',
+                    },
+                    skip: (page - 1) * limit, // Calculate the offset
+                    take: limit, // Limit the number of items per page
+                });
+    
+                totalCount = await db.jobMaterial.count({
+                    where: {
+                        productName: {
+                            contains: name,
+                            mode: "insensitive",
+                        },
+                    },
+                });
+            }
+    
             const isLastPage = materials.length < limit;
-        
+    
             res.status(200).json({ data: materials, totalCount, isLastPage });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get job materials.' });
         }
     }
+    
           
       
 
