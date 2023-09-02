@@ -64,6 +64,25 @@ export function convertStringToObjectArray(inputString: string) {
 }
 
 class InvoiceController {
+    private static invoiceNumberCount: number | null = null;
+
+    constructor() {
+        // Initialize the invoiceNumberCount when the class is first constructed
+        this.initializeInvoiceNumberCount();
+    }
+    
+
+      // Initialize the invoiceNumberCount
+    private async initializeInvoiceNumberCount() {
+        if (InvoiceController.invoiceNumberCount === null) {
+        const lastInvoice = await db.invoice.findFirst({
+            orderBy: { invoiceNo: 'desc' }, // Find the invoice with the highest invoiceNo
+        });
+
+        InvoiceController.invoiceNumberCount = lastInvoice ? lastInvoice.invoiceNo : 100000; // Default value if no invoices have been created yet
+        }
+    }
+
     async createInvoice (req: Request, res: Response) {
         const {
             job_type_id,
@@ -100,10 +119,13 @@ class InvoiceController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
+            InvoiceController.invoiceNumberCount! += 1;
+        
             const data: Prisma.InvoiceUncheckedCreateInput = {
                 customerID: parseInt(customer_id, 10),
                 jobTypeID: parseInt(job_type_id, 10),
                 vehicleID: parseInt(vehicle_id, 10),
+                invoiceNo: InvoiceController.invoiceNumberCount!,
                 description,
                 dueDate: due_date ? (new Date(due_date)).toISOString() : null
             }

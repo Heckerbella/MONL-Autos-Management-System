@@ -4,9 +4,10 @@
 generator client {
   provider = "prisma-client-js"
 }
+  // provider = "postgresql"
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -144,7 +145,8 @@ model Invoice {
   id            Int                  @id @default(autoincrement())
   dueDate       DateTime?
   description   String?
-  invoiceNo     Int                  @default(autoincrement())
+  // invoiceNo     Int                  @default(autoincrement())  // psql
+  invoiceNo     Int                  @unique// mysql
   customer      Customer             @relation(fields: [customerID], references: [id])
   customerID    Int
   jobType       JobType?             @relation(fields: [jobTypeID], references: [id])
@@ -229,7 +231,8 @@ model Estimate {
   id            Int                   @id @default(autoincrement())
   dueDate       DateTime?
   description   String?
-  estimateNo    Int                   @default(autoincrement())
+  // estimateNo    Int                   @default(autoincrement()) // psql
+  estimateNo    Int                   @unique// mysql
   customer      Customer              @relation(fields: [customerID], references: [id])
   customerID    Int
   jobType       JobType               @relation(fields: [jobTypeID], references: [id])

@@ -5,6 +5,23 @@ import { compareArrays, convertStringToObjectArray, isValidDiscountType, isValid
 import { EstimateJobMaterial, Prisma } from "@prisma/client";
 
 class EstimateController {
+    private static estimateNumberCount: number | null = null;
+
+    constructor() {
+        // Initialize the estimateNumberCount when the class is first constructed
+        this.initializeEstimateNumberCount();
+    }
+
+    private async initializeEstimateNumberCount() {
+        if (EstimateController.estimateNumberCount === null) {
+        const lastEstimate = await db.estimate.findFirst({
+            orderBy: { estimateNo: 'desc' }, // Find the invoice with the highest estimateNo
+        });
+
+        EstimateController.estimateNumberCount = lastEstimate ? lastEstimate.estimateNo : 100000; // Default value if no invoices have been created yet
+        }
+    }
+
     async createEstimate (req: Request, res: Response) {
         const {
             job_type_id,
@@ -38,10 +55,13 @@ class EstimateController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
+            EstimateController.estimateNumberCount! += 1;
+
             const data: Prisma.EstimateUncheckedCreateInput = {
                 customerID: parseInt(customer_id, 10),
                 jobTypeID: parseInt(job_type_id, 10),
                 vehicleID: parseInt(vehicle_id, 10),
+                estimateNo: EstimateController.estimateNumberCount!,
                 description,
                 dueDate: due_date ? (new Date(due_date)).toISOString() : null
             }

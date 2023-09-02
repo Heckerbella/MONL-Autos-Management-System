@@ -341,7 +341,7 @@ class JobMaterial {
                     where: {
                         productName: {
                             contains: name,
-                            mode: "insensitive",
+                            // mode: "insensitive", // only use in psql
                         },
                     },
                     orderBy: {
@@ -356,7 +356,7 @@ class JobMaterial {
                     where: {
                         productName: {
                             contains: name,
-                            mode: "insensitive",
+                            // mode: "insensitive",
                         },
                     },
                     orderBy: {
@@ -370,7 +370,7 @@ class JobMaterial {
                     where: {
                         productName: {
                             contains: name,
-                            mode: "insensitive",
+                            // mode: "insensitive",
                         },
                     },
                 });
