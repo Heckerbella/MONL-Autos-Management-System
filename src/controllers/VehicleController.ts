@@ -86,7 +86,7 @@ class Vehicle {
                 where: {
                     licensePlate: {
                         contains: license,
-                        mode: "insensitive"
+                        // mode: "insensitive"
                     },
                     ...queryOptions
                 },

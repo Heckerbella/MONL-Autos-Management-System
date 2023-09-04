@@ -218,8 +218,18 @@ class InvoiceController {
                 amount: true,
                 discountType: true,
                 customerID: true,
-                createdBy: true,
-                updatedBy: true,
+                createdBy: {
+                select: {
+                    id: true,
+                    email: true
+                    }
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        email: true
+                        }
+                },
                 customer: {
                     select: {
                         firstName: true,
@@ -264,8 +274,18 @@ class InvoiceController {
                     job: true,
                     amount: true,
                     discountType: true,   
-                    createdBy: true,
-                    updatedBy: true,
+                    createdBy: {
+                        select: {
+                            id: true,
+                            email: true
+                        }
+                    },
+                    updatedBy: {
+                        select: {
+                            id: true,
+                            email: true
+                        }
+                    },
                     customer: {
                         select: {
                             firstName: true,
