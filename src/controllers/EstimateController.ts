@@ -147,6 +147,8 @@ class EstimateController {
                         lastName: true,
                         email: true,
                         phone:true,
+                        companyName: true,
+                        companyContact: true,
                     }
                 },
                 vehicleID: true,
