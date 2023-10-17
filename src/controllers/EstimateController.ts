@@ -68,8 +68,12 @@ class EstimateController {
             let total = 0;
 
             if (service_charge) {
-                total += parseFloat(service_charge)
-                data["serviceCharge"] = parseFloat(service_charge).toFixed(2)
+                let svc = parseFloat(service_charge);
+                if (vat) {
+                    svc += svc * (parseFloat(vat)/100)
+                }
+                total += svc
+                data["serviceCharge"] = svc.toFixed(2)
             }
 
             let materialIDs, jobMaterials = [];
@@ -97,7 +101,6 @@ class EstimateController {
 
             if (vat) {
                 data["vat"] = parseFloat(vat);
-                total += total * (parseFloat(vat)/100)
             }
 
             data["amount"] = total
@@ -269,12 +272,24 @@ class EstimateController {
             let total = 0;
     
             if (service_charge) {
-                total += parseFloat(service_charge)
-                data["serviceCharge"] = parseFloat(service_charge)
+                let svc = parseFloat(service_charge)
+                
+                if (vat) {
+                    svc += svc * (parseFloat(vat)/100)
+                }
+                total += svc
+                data["serviceCharge"] = svc.toFixed(2)
                 // console.log(total, `adding service charge: ${service_charge}`)
             } else if(estimate.serviceCharge) {
                 // console.log(total, `adding service charge: ${estimate.serviceCharge}`)
-                total += parseFloat(estimate.serviceCharge.toString())
+                if (vat) {
+                    let svc = parseFloat(estimate.serviceCharge.toString())
+                    svc += svc * (parseFloat(vat)/100)
+                    total += svc
+                    data["serviceCharge"] = svc.toFixed(2)
+                } else {
+                    total += parseFloat(estimate.serviceCharge.toString())
+                }
             }
 
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
@@ -345,10 +360,10 @@ class EstimateController {
             if (vat) {
                 data["vat"] = parseFloat(vat);
                 // console.log(total, `vat new ${total * (parseFloat(vat)/100)}`)
-                total += total * (parseFloat(vat)/100)
+                // total += total * (parseFloat(vat)/100)
             } else if (estimate.vat) {
                 // console.log(total, `vat old ${total * (parseFloat(estimate.vat.toString())/100)}`)
-                total += total * (parseFloat(estimate.vat.toString())/100)
+                // total += total * (parseFloat(estimate.vat.toString())/100)
             }
 
             data["amount"] = total
