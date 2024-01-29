@@ -80,12 +80,12 @@ class Job  {
                     mileage: parseInt(mileage, 10)
                 }
                 await db.vehicle.update({
-                where: {
-                    id: parseInt(vehicle_id, 10)
-                },
-                data
-            })
-        }
+                    where: {
+                        id: parseInt(vehicle_id, 10)
+                    },
+                    data
+                })
+            }
 
             res.status(201).json({data: job, msg: "Job created successfully."});
         } catch (error) {
@@ -217,7 +217,7 @@ class Job  {
             res.status(200).json({ data: jobs });
             }
         } catch (error) {
-            // console.log(error)
+            console.log(error)
             res.status(400).json({ error_code: 400, msg: 'Could not get jobs.' });
         }
     }
@@ -270,7 +270,7 @@ class Job  {
     async updateJob (req: Request, res: Response) {
         // async updateJob (req: Request, res: Response) {
         const { id } = req.params;
-        const {delivery_date, status} = req.body;
+        const {delivery_date, status, mileage} = req.body;
 
         const job = await db.job.findUnique({where: {id: parseInt(id, 10)}})
         if (!job) {
@@ -292,6 +292,18 @@ class Job  {
                 },
                 data
             })
+
+            if (mileage) {
+                let data: Prisma.VehicleUncheckedUpdateInput = {
+                    mileage: parseInt(mileage, 10)
+                }
+                await db.vehicle.update({
+                    where: {
+                        id: job.vehicleID
+                    },
+                    data
+                })
+            }
 
             res.status(200).json({data: job, msg: "Job updated successfully."});
         } catch (error) {
