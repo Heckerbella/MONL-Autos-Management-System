@@ -29,7 +29,8 @@ class Job  {
             customer_id,
             vehicle_id,
             delivery_date,
-            status
+            status,
+            mileage
         } = req.body
 
         if (
@@ -72,6 +73,20 @@ class Job  {
             const job = await db.job.create({
                 data
             })
+
+            
+            if (mileage) {
+                let data: Prisma.VehicleUncheckedUpdateInput = {
+                    mileage: parseInt(mileage, 10)
+                }
+                await db.vehicle.update({
+                where: {
+                    id: parseInt(vehicle_id, 10)
+                },
+                data
+            })
+        }
+
             res.status(201).json({data: job, msg: "Job created successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not create job.' });
