@@ -76,14 +76,11 @@ class Job  {
 
             
             if (mileage) {
-                let data: Prisma.VehicleUncheckedUpdateInput = {
-                    mileage: parseInt(mileage, 10)
-                }
-                await db.vehicle.update({
-                    where: {
-                        id: parseInt(vehicle_id, 10)
-                    },
-                    data
+                await db.mileage.create({
+                    data: {
+                        mileage: parseInt(mileage, 10),
+                        vehicleID: vehicle.id
+                    }
                 })
             }
 
@@ -294,14 +291,11 @@ class Job  {
             })
 
             if (mileage) {
-                let data: Prisma.VehicleUncheckedUpdateInput = {
-                    mileage: parseInt(mileage, 10)
-                }
-                await db.vehicle.update({
-                    where: {
-                        id: job.vehicleID
-                    },
-                    data
+                await db.mileage.create({
+                    data: {
+                        mileage: parseInt(mileage, 10),
+                        vehicleID: job.vehicleID
+                    }
                 })
             }
 

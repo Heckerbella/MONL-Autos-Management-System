@@ -4,7 +4,8 @@
 generator client {
   provider = "prisma-client-js"
 }
-  // provider = "postgresql"
+
+// provider = "postgresql"
 
 datasource db {
   provider = "mysql"
@@ -72,7 +73,7 @@ model Vehicle {
   engineNo      String?        @unique
   chasisNo      String         @unique
   licensePlate  String         @unique
-  mileage       Int
+  mileage       Mileage[]
   vehicleType   VehicleType    @relation(fields: [vehicleTypeID], references: [id])
   vehicleTypeID Int
   createdAt     DateTime       @default(now())
@@ -81,6 +82,15 @@ model Vehicle {
   invoices      Invoice[]
   invoiceDrafts InvoiceDraft[]
   estimates     Estimate[]
+}
+
+model Mileage {
+  id        Int      @id @default(autoincrement())
+  vehicle   Vehicle  @relation(fields: [vehicleID], references: [id], onDelete: Cascade)
+  vehicleID Int
+  mileage Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model VehicleType {
@@ -146,7 +156,7 @@ model Invoice {
   dueDate       DateTime?
   description   String?
   // invoiceNo     Int                  @default(autoincrement())  // psql
-  invoiceNo     Int                  @unique// mysql
+  invoiceNo     Int                  @unique // mysql
   customer      Customer             @relation(fields: [customerID], references: [id])
   customerID    Int
   jobType       JobType?             @relation(fields: [jobTypeID], references: [id])
@@ -232,7 +242,7 @@ model Estimate {
   dueDate       DateTime?
   description   String?
   // estimateNo    Int                   @default(autoincrement()) // psql
-  estimateNo    Int                   @unique// mysql
+  estimateNo    Int                   @unique // mysql
   customer      Customer              @relation(fields: [customerID], references: [id])
   customerID    Int
   jobType       JobType               @relation(fields: [jobTypeID], references: [id])

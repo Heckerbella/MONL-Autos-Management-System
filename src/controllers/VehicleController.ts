@@ -42,12 +42,22 @@ class Vehicle {
                     licensePlate: license_plate,
                     ownerID: parseInt(owner_id, 10),
                     vehicleTypeID: parseInt(vehicle_type_id, 10),
-                    mileage: parseInt(mileage, 10)
                 }
             })
+            
 
             if (vehicle) {
-                res.status(201).json({data: vehicle, msg: "Vehicle Created Sucessfully."});
+                const mil = await db.mileage.create({
+                    data: {
+                        mileage: parseInt(mileage, 10),
+                        vehicleID: vehicle.id
+                    }
+                })
+
+
+                if (mil) {                    
+                    res.status(201).json({data: {...vehicle, mileage: [mil]}, msg: "Vehicle Created Sucessfully."});
+                }
             }
             
         } catch (error) {
@@ -96,7 +106,17 @@ class Vehicle {
                     modelName: true,
                     engineNo: true,
                     chasisNo: true,
-                    mileage: true,
+                    mileage: {
+                        select: {
+                            id: true,
+                            mileage: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        },
+                        orderBy: {
+                            createdAt: 'desc',
+                        }
+                    },
                     licensePlate: true,
                     createdAt: true,
                     updatedAt: true,
@@ -142,7 +162,17 @@ class Vehicle {
                     engineNo: true,
                     chasisNo: true,
                     licensePlate: true,
-                    mileage: true,
+                    mileage: {
+                        select: {
+                            id: true,
+                            mileage: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        },
+                        orderBy: {
+                            createdAt: 'desc',
+                        }
+                    },
                     ownerID: true,
                     vehicleTypeID: true,
                     owner: {
@@ -186,6 +216,17 @@ class Vehicle {
                     chasisNo: true,
                     licensePlate: true,
                     ownerID: true,
+                    mileage: {
+                        select: {
+                            id: true,
+                            mileage: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        },
+                        orderBy: {
+                            createdAt: 'desc',
+                        }
+                    },
                     vehicleTypeID: true,
                     owner: {
                         select: {
@@ -229,7 +270,17 @@ class Vehicle {
                     licensePlate: true,
                     ownerID: true,
                     vehicleTypeID: true,
-                    mileage: true,
+                    mileage: {
+                        select: {
+                            id: true,
+                            mileage: true,
+                            createdAt: true,
+                            updatedAt: true,
+                        },
+                        orderBy: {
+                            createdAt: 'desc',
+                        }
+                    },
                     vehicleType: {
                         select: {
                             id: true,
@@ -271,7 +322,6 @@ class Vehicle {
 
         if (model_no) data.modelNo = model_no
         if (model_name) data.modelName = model_name
-        if (mileage) data.mileage = parseInt(mileage, 10)
         if (engine_no) {
             const vehicleWithEngineNo = await db.vehicle.findFirst({
                 where: {
@@ -310,14 +360,14 @@ class Vehicle {
             if (vehicleWithLicensePlate) return res.status(400).json({ error_code: 400, msg: 'License plate already in use by another Vehicle.' });
             data.licensePlate = license_plate
         }
-
+        
         if (vehicle_type_id) {
             const vehicleType = await db.vehicleType.findUnique({where: {id: parseInt(vehicle_type_id, 10)}})
             if (!vehicleType) return res.status(400).json({ error_code: 400, msg: 'Vehicle type does not exist.' });
             data.vehicleTypeID = vehicle_type_id
         }
-
-
+        
+        
         try {
             const vehicle = await db.vehicle.update({
                 where: {
@@ -325,9 +375,22 @@ class Vehicle {
                 },
                 data
             })
-
+            
             if (vehicle) {
-                res.status(200).json({data: vehicle, msg: "Vehicle Updated Sucessfully."});
+                let mil;
+                if (mileage) {
+                    mil = await db.mileage.create({
+                        data: {
+                            mileage: parseInt(mileage, 10),
+                            vehicleID: vehicle.id
+                        }
+                    })
+                }
+
+                let returnData: Record<string, any> = {...vehicle}
+
+                if (mil) returnData = {...returnData, mileage: [mil]}
+                res.status(200).json({data: returnData, msg: "Vehicle Updated Sucessfully."});
             }
             
         } catch (error) {

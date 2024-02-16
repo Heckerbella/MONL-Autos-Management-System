@@ -113,7 +113,7 @@ class CustomerController {
                         let data: {[key: string]: string | number | null | Date} = {}
                         data = {...customer}
                         if (model_no) {
-                            const vehicle: {[key: string]: number | string | Date | null} = await db.vehicle.create({
+                            const vehicle: {[key: string]: number | string | Date | null | any} = await db.vehicle.create({
                                 data: {
                                     modelNo: model_no,
                                     modelName: model_name,
@@ -122,10 +122,19 @@ class CustomerController {
                                     licensePlate: license_plate,
                                     ownerID: customer.id,
                                     vehicleTypeID: parseInt(vehicle_type_id, 10),
-                                    mileage: parseInt(mileage, 10)
+                                    // mileage: parseInt(mileage, 10)
                                 }
                             })
+
+                            const mil = await db.mileage.create({
+                                data: {
+                                    mileage: parseInt(mileage, 10),
+                                    vehicleID: vehicle.id
+                                }
+                            })
+
                             vehicle["vehichleID"] = vehicle.id
+                            vehicle["mileage"] = [mil]
                             data = {...vehicle, ...data}
                         }
                         res.status(201).json({data, msg: "Customer Created Sucessfully."});
