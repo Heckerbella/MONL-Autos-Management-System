@@ -131,41 +131,66 @@ class EstimateController {
     }
 
     async getEstimates (req: Request, res: Response) {
+        const filterValue = req.query?.filter as string || null;
+
+        const whereFilter: Prisma.EstimateWhereInput = {};
+
+        if (filterValue) {
+            const customerIDs = await db.customer.findMany({
+                where: {
+                    OR: [
+                        { companyName: { contains: filterValue } },
+                        { firstName: { contains: filterValue } },
+                    ]
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            const customerIDArray = customerIDs.map((customer) => customer.id);
+
+            whereFilter.customerID = { in: customerIDArray };
+        }
+
+
         try {
-            const estimates = await db.estimate.findMany({ select: {
-                id: true,
-                estimateNo: true,
-                description: true,
-                createdAt: true,
-                dueDate: true,
-                materials: true,
-                vat: true,
-                discount: true,
-                amount: true,
-                discountType: true,
-                customerID: true,
-                customer: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        phone:true,
-                        companyName: true,
-                        companyContact: true,
-                    }
+            const estimates = await db.estimate.findMany({ 
+                where: whereFilter,
+                select: {
+                    id: true,
+                    estimateNo: true,
+                    description: true,
+                    createdAt: true,
+                    dueDate: true,
+                    materials: true,
+                    vat: true,
+                    discount: true,
+                    amount: true,
+                    discountType: true,
+                    customerID: true,
+                    customer: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone:true,
+                            companyName: true,
+                            companyContact: true,
+                        }
+                    },
+                    vehicleID: true,
+                    vehicle: {
+                        select: {
+                            modelNo: true,
+                            modelName: true,
+                        }
+                    },
                 },
-                vehicleID: true,
-                vehicle: {
-                    select: {
-                        modelNo: true,
-                        modelName: true,
-                    }
-                },
-            },
-            orderBy: {
-                id: 'asc'
-            }
-        });
+                orderBy: {
+                    id: 'asc'
+                }
+            });
             res.status(200).json({data: estimates, msg: "Estimates retrieved successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve estimates.' });

@@ -205,55 +205,83 @@ class InvoiceController {
     }
 
     async getInvoices (req: Request, res: Response) {
+        const filterValue = req.query?.filter as string || null;
+
+        const whereFilter: Prisma.InvoiceWhereInput = {};
+
+        if (filterValue) {
+            const customerIDs = await db.customer.findMany({
+                where: {
+                    OR: [
+                        { companyName: { contains: filterValue } },
+                        { firstName: { contains: filterValue } },
+                    ]
+                },
+                select: {
+                    id: true
+                }
+            });
+
+            const customerIDArray = customerIDs.map((customer) => customer.id);
+
+            // whereFilter.customerID = { in: customerIDArray };
+            whereFilter.OR = [
+                {customerID: {in: customerIDArray}},
+                { jobTypeID: { equals: parseInt(filterValue) } },
+            ]
+        }
+
         try {
-            const invoices = await db.invoice.findMany({ select: {
-                id: true,
-                invoiceNo: true,
-                paid: true,
-                description: true,
-                createdAt: true,
-                dueDate: true,
-                materials: true,
-                vat: true,
-                job: true,
-                discount: true,
-                amount: true,
-                discountType: true,
-                customerID: true,
-                createdBy: {
+            const invoices = await db.invoice.findMany({
+                where: whereFilter,
                 select: {
                     id: true,
-                    email: true
-                    }
-                },
-                updatedBy: {
+                    invoiceNo: true,
+                    paid: true,
+                    description: true,
+                    createdAt: true,
+                    dueDate: true,
+                    materials: true,
+                    vat: true,
+                    job: true,
+                    discount: true,
+                    amount: true,
+                    discountType: true,
+                    customerID: true,
+                    createdBy: {
                     select: {
                         id: true,
                         email: true
                         }
+                    },
+                    updatedBy: {
+                        select: {
+                            id: true,
+                            email: true
+                            }
+                    },
+                    customer: {
+                        select: {
+                            firstName: true,
+                            lastName: true,
+                            email: true,
+                            phone:true,
+                            companyName: true,
+                            companyContact: true,
+                        }
+                    },
+                    vehicleID: true,
+                    vehicle: {
+                        select: {
+                            modelNo: true,
+                            modelName: true,
+                        }
+                    },
                 },
-                customer: {
-                    select: {
-                        firstName: true,
-                        lastName: true,
-                        email: true,
-                        phone:true,
-                        companyName: true,
-                        companyContact: true,
-                    }
-                },
-                vehicleID: true,
-                vehicle: {
-                    select: {
-                        modelNo: true,
-                        modelName: true,
-                    }
-                },
-            },
-            orderBy: {
-                invoiceNo: 'desc'
-            }
-        });
+                orderBy: {
+                    invoiceNo: 'desc'
+                }
+            });
             res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });
@@ -672,7 +700,8 @@ class InvoiceDraft {
 
             if (!draft) return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
 
-            const data: Prisma.InvoiceUncheckedCreateInput = {} as Prisma.InvoiceUncheckedCreateInput
+            // Without<Prisma.InvoiceDraftUpdateInput, Prisma.InvoiceDraftUncheckedUpdateInput> & Prisma.InvoiceDraftUncheckedUpdateInput
+            const data: Prisma.InvoiceDraftUncheckedUpdateInput = {} as Prisma.InvoiceDraftUncheckedUpdateInput
     
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
