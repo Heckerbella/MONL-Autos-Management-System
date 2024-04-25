@@ -92,8 +92,8 @@ class Job  {
 
     async getJobs (req: Request, res: Response) {
         const customerID = req.query.customerID as string || null;
-        const page = req.query?.page ? parseInt(req.query.page.toString()) : undefined;
-        const limit = req.query?.limit ? parseInt(req.query.limit.toString()) : undefined;
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
         const filterValue = req.query?.filter as string || null;
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;

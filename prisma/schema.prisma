@@ -171,7 +171,7 @@ model Invoice {
   serviceCharge Decimal?             @default(0)
   updatedAt     DateTime             @updatedAt
   discountType  DiscountType?
-  vat           Decimal?             @default(7.5) @db.Decimal(6, 1)
+  vat           Decimal?             @default(0) @db.Decimal(6, 1)
   discount      Float?               @default(0)
   createdBy     User?                @relation(name: "createdby", fields: [createdByID], references: [id])
   createdByID   Int?

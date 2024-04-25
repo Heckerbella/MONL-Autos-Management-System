@@ -15,7 +15,7 @@ class EstimateController {
     private async initializeEstimateNumberCount() {
         if (EstimateController.estimateNumberCount === null) {
         const lastEstimate = await db.estimate.findFirst({
-            orderBy: { estimateNo: 'desc' }, // Find the invoice with the highest estimateNo
+            orderBy: { estimateNo: 'desc' }, // Find the estimate with the highest estimateNo
         });
 
         EstimateController.estimateNumberCount = lastEstimate ? lastEstimate.estimateNo : 100000; // Default value if no invoices have been created yet
@@ -26,14 +26,15 @@ class EstimateController {
         const {
             job_type_id,
             description,
+            job_id,
             due_date,
             customer_id,
             vehicle_id,
             materials,
             service_charge,
-            vat,
             discount,
             discount_type,
+            vat,
         } = req.body
 
         if (
@@ -49,14 +50,14 @@ class EstimateController {
         try {
             const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
             if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
-            const vehicle = await db.vehicle.findFirst({where: {ownerID: customer.id}})
+            const vehicle = await db.vehicle.findFirst({where: {ownerID: customer.id, id: parseInt(vehicle_id, 10)}})
             if (!vehicle) return res.status(404).json({ error_code: 404, msg: "Vehicle not found or vehichle doesn't belong to customer."})
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
             EstimateController.estimateNumberCount! += 1;
-
+        
             const data: Prisma.EstimateUncheckedCreateInput = {
                 customerID: parseInt(customer_id, 10),
                 jobTypeID: parseInt(job_type_id, 10),
@@ -69,11 +70,9 @@ class EstimateController {
 
             if (service_charge) {
                 let svc = parseFloat(service_charge);
-                if (vat) {
-                    svc += svc * (parseFloat(vat)/100)
-                }
-                total += svc
+                total += svc;
                 data["serviceCharge"] = svc.toFixed(2)
+                console.log("svc", "curr", total, "svc_charge", svc)
             }
 
             let materialIDs, jobMaterials = [];
@@ -87,24 +86,37 @@ class EstimateController {
                     if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
                     jobMaterials.push(jobMaterial)
                     const productCostNumber = parseFloat(jobMaterial.productCost.toString());
-                    total += productCostNumber * qty
+                    const itemTotal = productCostNumber * qty;
+                    total += itemTotal;
+                    console.log("adding", "curr", total, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
                 }
             }
 
 
             if (discount) {
-                if (discount_type == "AMOUNT") total -= parseFloat(discount)
-                if (discount_type == "PERCENTAGE") total -= total * (parseFloat(discount)/100)
+                if (discount_type == "AMOUNT") {
+                    total -= parseFloat(discount);
+                    console.log("discount", "curr", total, "disc", discount)
+                }
+                if (discount_type == "PERCENTAGE") {
+                    const discountFloat = parseFloat(discount);
+                    total -= total * (discountFloat / 100);
+                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
+                }
                 data["discount"] = parseFloat(discount)
                 data["discountType"] = discount_type
             }
 
             if (vat) {
-                data["vat"] = parseFloat(vat);
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
-            data["amount"] = total
-            // console.log(data)
+            data["amount"] = total.toFixed(2)
+
 
             const estimate = await db.estimate.create({
                 data
@@ -116,7 +128,7 @@ class EstimateController {
                         data: {
                             estimateID: estimate.id,
                             jobMaterialID: mat.id,
-                            quantity: materialIDs?.find((item) => item.id == mat.id)?.qty,
+                            quantity: materialIDs?.find((item: any) => item.id == mat.id)?.qty,
                             price: mat.productCost
                         }
                     })
@@ -129,6 +141,7 @@ class EstimateController {
             res.status(400).json({ error_code: 400, msg: 'Could not create estimate.' });
         }
     }
+
 
     async getEstimates (req: Request, res: Response) {
         const filterValue = req.query?.filter as string || null;
@@ -269,19 +282,18 @@ class EstimateController {
         const {
             description,
             due_date,
-            paid,
             job_type_id,
             service_charge,
             discount,
             discount_type,
             materials,
-            vat
+            vat,
         } = req.body
         
         try {
             const estimate = await db.estimate.findUnique({where: {id: parseInt(id, 10)}})
 
-            if (!estimate) return res.status(404).json({ error_code: 404, msg: 'Estimate not found.' });
+            if (!estimate) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
 
             const data: Prisma.EstimateUncheckedCreateInput = {} as Prisma.EstimateUncheckedCreateInput
     
@@ -297,24 +309,13 @@ class EstimateController {
             let total = 0;
     
             if (service_charge) {
-                let svc = parseFloat(service_charge)
-                
-                if (vat) {
-                    svc += svc * (parseFloat(vat)/100)
-                }
-                total += svc
+                let svc = parseFloat(service_charge);
+                total += svc;
                 data["serviceCharge"] = svc.toFixed(2)
-                // console.log(total, `adding service charge: ${service_charge}`)
+                console.log("svc", "curr", total, "svc_charge", svc)
             } else if(estimate.serviceCharge) {
-                // console.log(total, `adding service charge: ${estimate.serviceCharge}`)
-                if (vat) {
-                    let svc = parseFloat(estimate.serviceCharge.toString())
-                    svc += svc * (parseFloat(vat)/100)
-                    total += svc
-                    data["serviceCharge"] = svc.toFixed(2)
-                } else {
-                    total += parseFloat(estimate.serviceCharge.toString())
-                }
+                total += parseFloat(estimate.serviceCharge.toString())
+                console.log("svc", "curr", total, "svc_charge", estimate.serviceCharge)
             }
 
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
@@ -323,76 +324,73 @@ class EstimateController {
 
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
 
-            
-            const jobMaterials = await db.estimateJobMaterial.findMany({where: {estimateID: parseInt(id, 10)}});
             const updateJobMaterials = convertStringToObjectArray(materials);
             
-            const {toBeAdded, toBeModified, toBeUnchanged, toBeRemoved} = compareArrays<EstimateJobMaterial>(updateJobMaterials, jobMaterials);
+            const jobMaterialFindAll = await db.jobMaterial.findMany({
+                where: {id: {in: updateJobMaterials.map(material => material.id)}}
+            })
+            if (jobMaterialFindAll.length != updateJobMaterials.length) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
 
-            // console.log("add", toBeAdded, "mod", toBeModified, "remove", toBeRemoved, "unchanged", toBeUnchanged)
-
-            for (const jobMaterial of toBeAdded) {
-                const jobMaterialFind = await db.jobMaterial.findUnique({where: {id: jobMaterial.id}})
-                if (!jobMaterialFind) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
-                await db.estimateJobMaterial.create({
-                    data: {
-                        estimateID: parseInt(id, 10),
-                        jobMaterialID: jobMaterial.id,
-                        quantity: jobMaterial.qty,
-                        price: jobMaterialFind.productCost
-                    }
-                })      
-                const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
-                total += productCostNumber * jobMaterial.qty
-                // console.log(total, `adding new material: ${jobMaterialFind.productName} ${jobMaterialFind.productCost}`)
-            }
-
-            for (const jobMaterial of toBeModified) {
-                const jobMaterialGet = await db.estimateJobMaterial.findFirst({where: {AND: {jobMaterialID: jobMaterial.id, estimateID: parseInt(id, 10)}}})
-                if (jobMaterialGet) {
-                    await db.estimateJobMaterial.update({
-                        where: {id: jobMaterialGet.id},
-                        data: {quantity: jobMaterial.qty}
-                    })
-                    total += parseFloat(jobMaterialGet.price.toString()) * jobMaterial.qty
-                    // console.log(total, `modifying material: ${parseFloat(jobMaterialGet.price.toString()) * jobMaterial.qty}`)
+            for (const jobMaterial of updateJobMaterials) {
+                const jobMaterialFind = jobMaterialFindAll.find((material) => material.id === jobMaterial.id);
+                if (!jobMaterialFind) {
+                    return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
                 }
+
+                const jobMaterialEstimate = await db.estimateJobMaterial.findFirst({
+                    where: { AND: { jobMaterialID: jobMaterial.id, estimateID: parseInt(id, 10) } },
+                });
+                let price = jobMaterialFind.productCost;
+                if (jobMaterialEstimate) {
+                    await db.estimateJobMaterial.update({
+                        where: { id: jobMaterialEstimate.id },
+                        data: { quantity: jobMaterial.qty, price },
+                    });
+                } else {
+                    await db.estimateJobMaterial.create({
+                        data: {
+                            estimateID: parseInt(id, 10),
+                            jobMaterialID: jobMaterial.id,
+                            quantity: jobMaterial.qty,
+                            price,
+                        },
+                    });
+                }
+                const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
+                total += productCostNumber * jobMaterial.qty;
+                console.log("adding", "curr", total, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
             }
 
-            for (const jobMaterial of toBeUnchanged) {
-                total += parseFloat(jobMaterial.price.toString()) * jobMaterial.quantity
-                // console.log(total, `unchanged material: ${parseFloat(jobMaterial.price.toString()) * jobMaterial.quantity}`)
-            }
-
-            for (const jobMaterial of toBeRemoved) {
-                await db.estimateJobMaterial.delete({where: {id: jobMaterial.id}})
-            }
+            await db.estimateJobMaterial.deleteMany({where: {estimateID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
 
             if (discount) {
                 if (discount_type == "AMOUNT") total -= parseFloat(discount)
                 if (discount_type == "PERCENTAGE") total -= total * (parseFloat(discount)/100)
+                console.log("discount", "curr", total, "disc", discount)
                 data["discount"] = parseFloat(discount)
                 data["discountType"] = discount_type
-                // console.log(total, `discount new ${discount}`)
-            } else {
-                if (estimate.discount) {
+            } else if (estimate.discount) {
                     if (estimate.discountType == "AMOUNT") total -= parseFloat(estimate.discount.toString())
                     if (estimate.discountType == "PERCENTAGE") total -= total * (parseFloat(estimate.discount.toString())/100)
-                // console.log(total, `discount old ${estimate.discount}`)
-            }
+                    console.log("discount", "curr", total, "disc", estimate.discount)
             }
 
             if (vat) {
-                data["vat"] = parseFloat(vat);
-                // console.log(total, `vat new ${total * (parseFloat(vat)/100)}`)
-                // total += total * (parseFloat(vat)/100)
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             } else if (estimate.vat) {
-                // console.log(total, `vat old ${total * (parseFloat(estimate.vat.toString())/100)}`)
-                // total += total * (parseFloat(estimate.vat.toString())/100)
+                const vatFloat = parseFloat(estimate.vat.toString());
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+
             }
 
             data["amount"] = total
-            // console.log(total,"total")
+
             const updatedEstimate = await db.estimate.update({
                 where: {id: parseInt(id, 10)},
                 data
@@ -402,6 +400,7 @@ class EstimateController {
             res.status(400).json({ error_code: 400, msg: 'Could not update estimate.' });
         }
     }
+
 
 
     async deleteEstimate (req: Request, res: Response) {
