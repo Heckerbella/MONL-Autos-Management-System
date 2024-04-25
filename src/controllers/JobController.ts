@@ -91,12 +91,15 @@ class Job  {
     }
 
     async getJobs (req: Request, res: Response) {
-        const { customerID } = req.params;
-        const page = req.query?.page ? parseInt(req.query.page.toString()) : undefined;
-        const limit = req.query?.limit ? parseInt(req.query.limit.toString()) : undefined;
+        const customerID = req.query.customerID as string || null;
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
+        const filterValue = req.query?.filter as string || null;
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;
 
+        const whereFilter: Prisma.JobWhereInput = {};
+    
         if (customerID && isNaN(parseInt(customerID, 10))) {
             return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
         }
@@ -109,8 +112,35 @@ class Job  {
         if ((startDatetime && !isValidDate(startDatetime)) || (endDatetime && !isValidDate(endDatetime))) {
             return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
         }
+
+        if (filterValue && customerID) {
+            whereFilter.AND = [{
+                vehicleID: {
+                    in: await db.vehicle.findMany({
+                        where: {
+                            licensePlate: { contains: filterValue }
+                        },
+                        select: {
+                            id: true
+                        },
+                    }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
+                },
+                customerID: parseInt(customerID, 10),
+            }];
+        } else if (filterValue) {
+            whereFilter.vehicleID = {
+                in: await db.vehicle.findMany({
+                    where: {
+                        licensePlate: { contains: filterValue }
+                    },
+                    select: {
+                        id: true
+                    },
+                }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id))
+            };
+        }
         
-        let filterOptions: {[key: string]: any} = customerID ? { customerID: parseInt(customerID, 10) } : {};
+        let filterOptions: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, whereFilter] } : whereFilter;
         
         try {
             let jobs;
@@ -124,7 +154,7 @@ class Job  {
         
             // Retrieve jobs with pagination
             jobs = await db.job.findMany({
-                where: filterOptions,
+                where: whereFilter,
                 select: {
                 id: true,
                 jobTypeID: true,
