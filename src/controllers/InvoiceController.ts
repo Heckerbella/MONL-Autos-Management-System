@@ -137,6 +137,24 @@ class InvoiceController {
                 data["serviceCharge"] = svc.toFixed(2)
                 console.log("svc", "curr", total, "svc_charge", svc)
             }
+            if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
+
+
+            if (discount) {
+                if (discount_type == "AMOUNT") {
+                    total -= parseFloat(discount);
+                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                    console.log("discount", "curr", total, "disc", discount)
+                }
+                if (discount_type == "PERCENTAGE") {
+                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    const discountFloat = parseFloat(discount);
+                    total -= total * (discountFloat / 100);
+                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
+                }
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+            }
 
             let materialIDs, jobMaterials = [];
             if (materials) {
@@ -155,20 +173,6 @@ class InvoiceController {
                 }
             }
 
-
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount);
-                    console.log("discount", "curr", total, "disc", discount)
-                }
-                if (discount_type == "PERCENTAGE") {
-                    const discountFloat = parseFloat(discount);
-                    total -= total * (discountFloat / 100);
-                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
-                }
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
-            }
 
             if (vat) {
                 const vatFloat = parseFloat(vat);
@@ -428,10 +432,36 @@ class InvoiceController {
                 total += parseFloat(invoice.serviceCharge.toString())
                 console.log("svc", "curr", total, "svc_charge", invoice.serviceCharge)
             }
+            if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
+
 
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
+
+            if (discount) {
+                if (discount_type == "AMOUNT") {
+                    total -= parseFloat(discount)
+                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                }
+                if (discount_type == "PERCENTAGE") {
+                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    total -= total * (parseFloat(discount)/100)
+                }
+                console.log("discount", "curr", total, "disc", discount)
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+            } else if (invoice.discount) {
+                    if (invoice.discountType == "AMOUNT") {
+                        total -= parseFloat(invoice.discount.toString())
+                        if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                    }
+                    if (invoice.discountType == "PERCENTAGE") {
+                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    total -= total * (parseFloat(invoice.discount.toString())/100)
+                    }
+                    console.log("discount", "curr", total, "disc", invoice.discount)
+            }
 
             if (paid) data['paid'] = paid
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
@@ -474,18 +504,6 @@ class InvoiceController {
             }
 
             await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
-
-            if (discount) {
-                if (discount_type == "AMOUNT") total -= parseFloat(discount)
-                if (discount_type == "PERCENTAGE") total -= total * (parseFloat(discount)/100)
-                console.log("discount", "curr", total, "disc", discount)
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
-            } else if (invoice.discount) {
-                    if (invoice.discountType == "AMOUNT") total -= parseFloat(invoice.discount.toString())
-                    if (invoice.discountType == "PERCENTAGE") total -= total * (parseFloat(invoice.discount.toString())/100)
-                    console.log("discount", "curr", total, "disc", invoice.discount)
-            }
 
             if (vat) {
                 const vatFloat = parseFloat(vat);
