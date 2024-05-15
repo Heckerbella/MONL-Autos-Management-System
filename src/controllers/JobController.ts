@@ -396,7 +396,7 @@ class JobMaterial {
                         },
                     },
                     orderBy: {
-                        id: 'asc',
+                        createdAt: 'desc',
                     },
                 });
     
@@ -411,7 +411,7 @@ class JobMaterial {
                         },
                     },
                     orderBy: {
-                        id: 'asc',
+                        createdAt: 'desc',
                     },
                     skip: (page - 1) * limit, // Calculate the offset
                     take: limit, // Limit the number of items per page
