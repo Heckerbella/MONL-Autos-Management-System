@@ -73,6 +73,7 @@ class Vehicle {
         const limit = Number(req.query.limit) || undefined;
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;
+        const filterValue = req.query?.filter as string || null;
 
 
         if ((startDatetime && !endDatetime) || (!startDatetime && endDatetime)) {
@@ -84,28 +85,62 @@ class Vehicle {
             return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
         }
 
+        const whereCustomerFilter: Prisma.CustomerWhereInput = {};
+        if (filterValue) {
+            const strippedFilterValue = filterValue.replace(/['"]/g, '');
+            const filterWords = strippedFilterValue.split(' ');
+            if (filterWords.length > 1) {
+                whereCustomerFilter.OR = [
+                    {
+                        firstName: { contains: filterWords[0] },
+                        lastName: { contains: filterWords[1] },
+                    },
+                    {
+                        firstName: { contains: filterWords[1] },
+                        lastName: { contains: filterWords[0] },
+                    },
+                ];
+            } else {
+                whereCustomerFilter.OR = [
+                    { firstName: { contains: strippedFilterValue } },
+                    { lastName: { contains: strippedFilterValue } },
+                ];
+            }
+        }
+        
+        const customersMatchingFilter = await db.customer.findMany({
+            where: whereCustomerFilter,
+            select: {
+                id: true,
+            },
+        });
+
+
+        const customerIds = customersMatchingFilter.map((customer) => customer.id);
+
+
+        const whereVehicleFilter: Prisma.VehicleWhereInput = {};
+        
+        whereVehicleFilter.ownerID = {
+            in: customerIds,
+        };
+
+        if (startDatetime && endDatetime) {
+            whereVehicleFilter.createdAt = {
+                gte: new Date(startDatetime),
+                lte: new Date(endDatetime),
+            };
+        }
+
+        whereVehicleFilter.licensePlate = {contains: license}
         try {
         
             if (page !== undefined && limit !== undefined) {
                 // Pagination is requested
-                let totalCount = await db.vehicle.count();
-                let queryOptions: {[key: string]: any} = {}
-                if (startDatetime && endDatetime) {
-                    queryOptions = {
-                    createdAt: {
-                        gte: new Date(startDatetime),
-                        lte: new Date(endDatetime),
-                    },
-                    };
-                }
+                let totalCount = await db.vehicle.count({where: whereVehicleFilter});
+
                 const vehicles = await db.vehicle.findMany({
-                    where: {
-                        licensePlate: {
-                            contains: license,
-                            // mode: "insensitive"
-                        },
-                        ...queryOptions
-                    },
+                    where: whereVehicleFilter,
                     select: {
                         id: true,
                         modelNo: true,
@@ -155,23 +190,8 @@ class Vehicle {
                 return res.status(200).json({ data: vehicles, totalCount, isLastPage });
             }
 
-            let queryOptions: {[key: string]: any} = {}
-            if (startDatetime && endDatetime) {
-                queryOptions = {
-                  createdAt: {
-                    gte: new Date(startDatetime),
-                    lte: new Date(endDatetime),
-                  },
-                };
-            }
             const vehicles = await db.vehicle.findMany({
-                where: {
-                    licensePlate: {
-                        contains: license,
-                        // mode: "insensitive"
-                    },
-                    ...queryOptions
-                },
+                where: whereVehicleFilter,
                 select: {
                     id: true,
                     modelNo: true,

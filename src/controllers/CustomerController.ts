@@ -167,13 +167,20 @@ class CustomerController {
             let totalCount;
 
             const whereFilter: Prisma.CustomerWhereInput = {};
-
             if (filterValue) {
-                whereFilter.OR = [
-                    { customerTypeID: { equals: parseInt(filterValue) } }, // or { in: [parseInt(filterValue), ...] } if you need multiple types
-                    { companyName: { contains: filterValue } },
-                    { firstName: { contains: filterValue } },
-                ];
+                const parsedFilterValue = parseInt(filterValue);
+                if (!isNaN(parsedFilterValue)) {
+                    whereFilter.OR = [
+                        { customerTypeID: { equals: parsedFilterValue } }, // or { in: [parseInt(filterValue), ...] } if you need multiple types
+                        { companyName: { contains: filterValue } },
+                        { firstName: { contains: filterValue } },
+                    ];
+                } else {
+                    whereFilter.OR = [
+                        { companyName: { contains: filterValue } },
+                        { firstName: { contains: filterValue } },
+                    ];
+                }
             }
 
             if (page !== undefined && limit !== undefined) {
@@ -186,7 +193,7 @@ class CustomerController {
                 customers = await db.customer.findMany({
                     where: whereFilter,
                     orderBy: {
-                        id: 'asc',
+                        createdAt: 'desc',
                     },
                     skip: (page - 1) * limit, // Calculate the offset
                     take: limit, // Limit the number of items per page
@@ -209,13 +216,14 @@ class CustomerController {
                         }),
                     },
                     orderBy: {
-                        id: 'asc',
+                        createdAt: 'desc',
                     },
                 };
                 customers = await db.customer.findMany(queryOptions);
                 res.status(200).json({ data: customers });
             }
         } catch (error) {
+            console.log(error)
             res.status(400).json({ error_code: 400, msg: 'Could not get customers.' });
         }
     }
