@@ -69,6 +69,8 @@ class Vehicle {
 
     async getVehicles (req: Request, res: Response) {
         const license = req.query?.name?.toString() ?? ""
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;
 
@@ -83,6 +85,76 @@ class Vehicle {
         }
 
         try {
+        
+            if (page !== undefined && limit !== undefined) {
+                // Pagination is requested
+                let totalCount = await db.vehicle.count();
+                let queryOptions: {[key: string]: any} = {}
+                if (startDatetime && endDatetime) {
+                    queryOptions = {
+                    createdAt: {
+                        gte: new Date(startDatetime),
+                        lte: new Date(endDatetime),
+                    },
+                    };
+                }
+                const vehicles = await db.vehicle.findMany({
+                    where: {
+                        licensePlate: {
+                            contains: license,
+                            // mode: "insensitive"
+                        },
+                        ...queryOptions
+                    },
+                    select: {
+                        id: true,
+                        modelNo: true,
+                        modelName: true,
+                        engineNo: true,
+                        chasisNo: true,
+                        mileage: {
+                            select: {
+                                id: true,
+                                mileage: true,
+                                createdAt: true,
+                                updatedAt: true,
+                            },
+                            orderBy: {
+                                createdAt: 'desc',
+                            }
+                        },
+                        licensePlate: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        ownerID: true,
+                        vehicleTypeID: true,
+                        owner: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                phone: true
+                            }
+                        },
+                        vehicleType: {
+                            select: {
+                                id: true,
+                                name: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        id: 'asc'
+                    },
+                    skip: (page -1) * limit,
+                    take: limit,
+                })
+                const isLastPage = vehicles.length < limit;
+            
+                return res.status(200).json({ data: vehicles, totalCount, isLastPage });
+            }
+
             let queryOptions: {[key: string]: any} = {}
             if (startDatetime && endDatetime) {
                 queryOptions = {
@@ -91,7 +163,7 @@ class Vehicle {
                     lte: new Date(endDatetime),
                   },
                 };
-              }
+            }
             const vehicles = await db.vehicle.findMany({
                 where: {
                     licensePlate: {
@@ -316,7 +388,21 @@ class Vehicle {
             }
         })
 
+        
         if (!vehicle) return res.status(400).json({ error_code: 400, msg: 'Vehicle does not exist.' });
+
+        const latestMilage = await db.mileage.findFirst({
+            where: {
+                vehicleID: parseInt(vehicleID, 10)
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        })
+
+        if (latestMilage && latestMilage.mileage > parseInt(mileage, 10)) {
+            return res.status(400).json({ error_code: 400, msg: 'Cannot decrease mileage.' });
+        }
 
         const data: {[key: string]: number | string} = {}
 
