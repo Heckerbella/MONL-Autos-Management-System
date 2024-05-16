@@ -54,6 +54,13 @@ class Vehicle {
                     }
                 })
 
+                await db.ownershipHistory.create({
+                    data: {
+                        currentOwnerID:  parseInt(owner_id, 10),
+                        vehicleID: vehicle.id
+                    }
+                })
+
 
                 if (mil) {                    
                     res.status(201).json({data: {...vehicle, mileage: [mil]}, msg: "Vehicle Created Sucessfully."});
@@ -334,6 +341,28 @@ class Vehicle {
                             id: true,
                             name: true
                         }
+                    },
+                    ownerShipHistory: {
+                        select: {
+                            id: true,
+                            previousOwner: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                }
+                            },
+                            currentOwner: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                }
+                            }
+                        },
+                        orderBy: {createdAt: "desc"}
                     }
                 }
             })
@@ -378,6 +407,28 @@ class Vehicle {
                             id: true,
                             name: true
                         }
+                    },
+                    ownerShipHistory: {
+                        select: {
+                            id: true,
+                            previousOwner: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                }
+                            },
+                            currentOwner: {
+                                select: {
+                                    id: true,
+                                    firstName: true,
+                                    lastName: true,
+                                    email: true,
+                                }
+                            }
+                        },
+                        orderBy: {createdAt: "desc"}
                     }
                 }
             })
@@ -512,17 +563,34 @@ class Vehicle {
         }
 
         try {
-            const vehicle = await db.vehicle.update({
+            const vehicle = await db.vehicle.findUnique({
+                where: {
+                    id: parseInt(id, 10)
+                }
+            })
+
+            if (!vehicle) {
+                return res.status(400).json({error_code: 400, msg: 'Vehicle does not exist.'});
+            }
+
+            const updatedVehicle = await db.vehicle.update({
                 where: {
                     id: parseInt(id, 10)
                 },
-                data
+                data: {
+                    ownerID: parseInt(customerID, 10)
+                }
             })
 
-            if (vehicle) {
-                res.status(200).json({data: vehicle, msg: "Vehicle Updated Sucessfully."});
-            }
-            
+            await db.ownershipHistory.create({
+                data: {
+                    previousOwnerID: vehicle.ownerID,
+                    currentOwnerID: updatedVehicle.ownerID,
+                    vehicleID: updatedVehicle.id
+                }
+            })
+
+            res.status(200).json({data: updatedVehicle, msg: "Vehicle Updated Sucessfully."});
         } catch (error) {
             res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
