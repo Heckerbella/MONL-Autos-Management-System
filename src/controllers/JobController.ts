@@ -69,13 +69,20 @@ class Job  {
             // let data: Prisma.JobCreateInput = {}
 
             if (status) data["status"] = status
-
-            const job = await db.job.create({
-                data
-            })
-
-            
             if (mileage) {
+                const latestMilage = await db.mileage.findFirst({
+                    where: {
+                        vehicleID: parseInt(vehicle_id, 10)
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                })
+        
+                if (latestMilage && latestMilage.mileage > parseInt(mileage, 10)) {
+                    return res.status(400).json({ error_code: 400, msg: 'Cannot decrease mileage.' });
+                }
+
                 await db.mileage.create({
                     data: {
                         mileage: parseInt(mileage, 10),
@@ -83,6 +90,12 @@ class Job  {
                     }
                 })
             }
+
+            const job = await db.job.create({
+                data
+            })
+
+            
 
             res.status(201).json({data: job, msg: "Job created successfully."});
         } catch (error) {
@@ -113,31 +126,54 @@ class Job  {
             return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
         }
 
-        if (filterValue && customerID) {
-            whereFilter.AND = [{
-                vehicleID: {
-                    in: await db.vehicle.findMany({
-                        where: {
-                            licensePlate: { contains: filterValue }
-                        },
-                        select: {
-                            id: true
-                        },
-                    }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
+        if (filterValue) {
+            const jobTypeID = await db.jobType.findFirst({
+                where: {
+                    name: { contains: filterValue }
                 },
-                customerID: parseInt(customerID, 10),
-            }];
-        } else if (filterValue) {
-            whereFilter.vehicleID = {
-                in: await db.vehicle.findMany({
-                    where: {
-                        licensePlate: { contains: filterValue }
+                select: {
+                    id: true
+                }
+            })
+            
+            if (customerID) {
+                whereFilter.AND = [{
+                    OR: [{
+                        vehicleID: {
+                            in: await db.vehicle.findMany({
+                                where: {
+                                    licensePlate: { contains: filterValue }
+                                },
+                                select: {
+                                    id: true
+                                },
+                            }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
+                        },
+                        status: { equals: filterValue as JobStatus | undefined }
+                    }],
+                    customerID: parseInt(customerID, 10),
+                }];
+                if (jobTypeID &&  whereFilter.AND[0].OR?.[0]) {
+                    whereFilter.AND[0].OR[0].jobTypeID = jobTypeID.id
+                }
+            } else {
+                whereFilter.OR = [{
+                    vehicleID: {
+                        in: await db.vehicle.findMany({
+                            where: {
+                                licensePlate: { contains: filterValue }
+                            },
+                            select: {
+                                id: true
+                            },
+                        }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
                     },
-                    select: {
-                        id: true
-                    },
-                }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id))
-            };
+                    status: { equals: filterValue as JobStatus | undefined }
+                }]
+                if (jobTypeID &&  whereFilter.OR?.[0]) {
+                    whereFilter.OR[0].jobTypeID = jobTypeID.id
+                }
+            }
         }
         
         let filterOptions: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, whereFilter] } : whereFilter;

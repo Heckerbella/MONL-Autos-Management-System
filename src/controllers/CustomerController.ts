@@ -133,6 +133,13 @@ class CustomerController {
                                 }
                             })
 
+                            await db.ownershipHistory.create({
+                                data: {
+                                    currentOwnerID:  customer.id,
+                                    vehicleID: vehicle.id
+                                }
+                            })
+
                             vehicle["vehichleID"] = vehicle.id
                             vehicle["mileage"] = [mil]
                             data = {...vehicle, ...data}
