@@ -161,6 +161,7 @@ class InvoiceController {
                 if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
                 materialIDs = convertStringToObjectArray(materials)
 
+                let subTotal = 0
                 for (const item of materialIDs) {
                     const { id, qty } = item
                     const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
@@ -168,19 +169,21 @@ class InvoiceController {
                     jobMaterials.push(jobMaterial)
                     const productCostNumber = parseFloat(jobMaterial.productCost.toString());
                     const itemTotal = productCostNumber * qty;
-                    total += itemTotal;
-                    console.log("adding", "curr", total, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
+                    subTotal += itemTotal;
+                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
                 }
+                if (vat) {
+                    const vatFloat = parseFloat(vat);
+                    const vatAmount = subTotal * (vatFloat / 100);
+                    subTotal += vatAmount;
+                    data["vat"] = vatFloat;
+                    total += subTotal
+                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+                }
+                console.log("curr", total )
             }
 
 
-            if (vat) {
-                const vatFloat = parseFloat(vat);
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-            }
 
             data["amount"] = total.toFixed(2)
 
@@ -473,6 +476,7 @@ class InvoiceController {
             })
             if (jobMaterialFindAll.length != updateJobMaterials.length) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
 
+            let subTotal = 0
             for (const jobMaterial of updateJobMaterials) {
                 const jobMaterialFind = jobMaterialFindAll.find((material) => material.id === jobMaterial.id);
                 if (!jobMaterialFind) {
@@ -499,25 +503,27 @@ class InvoiceController {
                     });
                 }
                 const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
-                total += productCostNumber * jobMaterial.qty;
-                console.log("adding", "curr", total, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
+                subTotal += productCostNumber * jobMaterial.qty;
+                console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
             }
 
             await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
 
-            if (vat) {
+            if (vat && subTotal > 0) {
                 const vatFloat = parseFloat(vat);
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
+                const vatAmount = subTotal * (vatFloat / 100);
+                subTotal += vatAmount;
                 data["vat"] = vatFloat;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-            } else if (invoice.vat) {
+                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
+            } else if (invoice.vat && subTotal > 0) {
                 const vatFloat = parseFloat(invoice.vat.toString());
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+                const vatAmount = subTotal * (vatFloat / 100);
+                subTotal += vatAmount;
+                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
 
             }
+
+            total += subTotal
 
             data["amount"] = total
 
