@@ -98,6 +98,7 @@ class EstimateController {
                 if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
                 materialIDs = convertStringToObjectArray(materials)
 
+                let subTotal = 0
                 for (const item of materialIDs) {
                     const { id, qty } = item
                     const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
@@ -105,18 +106,22 @@ class EstimateController {
                     jobMaterials.push(jobMaterial)
                     const productCostNumber = parseFloat(jobMaterial.productCost.toString());
                     const itemTotal = productCostNumber * qty;
-                    total += itemTotal;
-                    console.log("adding", "curr", total, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
+                    subTotal += itemTotal;
+                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
                 }
+
+                if (vat) {
+                    const vatFloat = parseFloat(vat);
+                    const vatAmount = subTotal * (vatFloat / 100);
+                    subTotal += vatAmount;
+                    data["vat"] = vatFloat;
+                    total += subTotal
+                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+                }
+
+                console.log("curr", total )
             }
 
-            if (vat) {
-                const vatFloat = parseFloat(vat);
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-            }
 
             data["amount"] = total.toFixed(2)
 
