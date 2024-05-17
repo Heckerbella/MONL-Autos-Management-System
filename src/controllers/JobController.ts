@@ -104,7 +104,7 @@ class Job  {
     }
 
     async getJobs (req: Request, res: Response) {
-        const customerID = req.query.customerID as string || null;
+        const customerID = req.query.customerID ? req.query.customerID as string : (req.params.customerID ? req.params.customerID as string : null);
         const page = Number(req.query.page) || undefined;
         const limit = Number(req.query.limit) || undefined;
         const filterValue = req.query?.filter as string || null;
