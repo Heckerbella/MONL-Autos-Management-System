@@ -257,7 +257,7 @@ class EstimateController {
                         },
                     },
                     orderBy: {
-                        id: 'asc'
+                        createdAt: 'desc'
                     }
                 });
                 res.status(200).json({data: estimates, msg: "Estimates retrieved successfully."});
