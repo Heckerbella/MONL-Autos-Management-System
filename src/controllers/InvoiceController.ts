@@ -97,6 +97,7 @@ class InvoiceController {
             discount_type,
             vat,
             detokenizedEmail,
+            paid,
             draft_id
         } = req.body
 
@@ -155,6 +156,8 @@ class InvoiceController {
                 data["discount"] = parseFloat(discount)
                 data["discountType"] = discount_type
             }
+
+            if (paid) data['paid'] = paid
 
             let materialIDs, jobMaterials = [];
             if (materials) {
@@ -225,7 +228,9 @@ class InvoiceController {
 
     async getInvoices (req: Request, res: Response) {
         const filterValue = req.query?.filter as string || null;
-
+        const paid = req.query?.paid as string || null;
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
         const whereFilter: Prisma.InvoiceWhereInput = {};
 
         if (filterValue) {
@@ -249,63 +254,124 @@ class InvoiceController {
                 { jobTypeID: { equals: parseInt(filterValue) } },
             ]
 
-            if (filterValue.toLowerCase() === 'paid') {
-                whereFilter.OR.push({paid: true})
-            }
+        }
+
+        if (paid !== null && (paid.toLowerCase() === 'true' || paid.toLowerCase() === 'false')) {
+            whereFilter.paid = paid.toLowerCase()  === 'true'
         }
 
         try {
-            const invoices = await db.invoice.findMany({
-                where: whereFilter,
-                select: {
-                    id: true,
-                    invoiceNo: true,
-                    paid: true,
-                    description: true,
-                    createdAt: true,
-                    dueDate: true,
-                    materials: true,
-                    vat: true,
-                    job: true,
-                    discount: true,
-                    amount: true,
-                    discountType: true,
-                    customerID: true,
-                    createdBy: {
+            if (page !== undefined && limit !== undefined) {
+                let totalCount = await db.invoice.count({where: whereFilter});
+                const invoices = await db.invoice.findMany({
+                    where: whereFilter,
                     select: {
                         id: true,
-                        email: true
-                        }
-                    },
-                    updatedBy: {
+                        invoiceNo: true,
+                        paid: true,
+                        description: true,
+                        serviceCharge: true,
+                        createdAt: true,
+                        dueDate: true,
+                        materials: true,
+                        vat: true,
+                        job: true,
+                        discount: true,
+                        amount: true,
+                        discountType: true,
+                        customerID: true,
+                        createdBy: {
                         select: {
                             id: true,
                             email: true
                             }
+                        },
+                        updatedBy: {
+                            select: {
+                                id: true,
+                                email: true
+                                }
+                        },
+                        customer: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                phone:true,
+                                companyName: true,
+                                companyContact: true,
+                            }
+                        },
+                        vehicleID: true,
+                        vehicle: {
+                            select: {
+                                modelNo: true,
+                                modelName: true,
+                            }
+                        },
                     },
-                    customer: {
+                    orderBy: {
+                        createdAt: 'desc'
+                    },
+                    skip: (page -1) * limit,
+                    take: limit,
+                });
+
+                const isLastPage = invoices.length < limit;
+                res.status(200).json({data: invoices,totalCount, isLastPage,  msg: "Invoices retrieved successfully."});
+            } else {
+                const invoices = await db.invoice.findMany({
+                    where: whereFilter,
+                    select: {
+                        id: true,
+                        invoiceNo: true,
+                        paid: true,
+                        description: true,
+                        createdAt: true,
+                        dueDate: true,
+                        materials: true,
+                        vat: true,
+                        job: true,
+                        discount: true,
+                        amount: true,
+                        discountType: true,
+                        customerID: true,
+                        createdBy: {
                         select: {
-                            firstName: true,
-                            lastName: true,
-                            email: true,
-                            phone:true,
-                            companyName: true,
-                            companyContact: true,
-                        }
+                            id: true,
+                            email: true
+                            }
+                        },
+                        updatedBy: {
+                            select: {
+                                id: true,
+                                email: true
+                                }
+                        },
+                        customer: {
+                            select: {
+                                firstName: true,
+                                lastName: true,
+                                email: true,
+                                phone:true,
+                                companyName: true,
+                                companyContact: true,
+                            }
+                        },
+                        vehicleID: true,
+                        vehicle: {
+                            select: {
+                                modelNo: true,
+                                modelName: true,
+                            }
+                        },
                     },
-                    vehicleID: true,
-                    vehicle: {
-                        select: {
-                            modelNo: true,
-                            modelName: true,
-                        }
-                    },
-                },
-                orderBy: {
-                    createdAt: 'desc'
-                }
-            });
-            res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                });
+                res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
+            }
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });
         }
