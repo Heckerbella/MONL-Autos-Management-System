@@ -108,6 +108,7 @@ class Job  {
         const page = Number(req.query.page) || undefined;
         const limit = Number(req.query.limit) || undefined;
         const filterValue = req.query?.filter as string || null;
+        const status = req.query?.status as string || null;
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;
 
@@ -155,10 +156,6 @@ class Job  {
                 if (jobTypeID && whereFilter.AND[0].OR) {
                     whereFilter.AND[0].OR.push({jobTypeID: {equals: jobTypeID.id}});
                 }
-
-                if (Object.values(JobStatus).some(status => filterValue?.includes(status)) && whereFilter.AND[0].OR) {
-                    whereFilter.AND[0].OR.push({status: { in: Object.values(JobStatus).filter(status => filterValue?.includes(status)).map(status => status as JobStatus) }});
-                }
             } else {
                 whereFilter.OR = [{
                     vehicleID: {
@@ -175,15 +172,19 @@ class Job  {
                 if (jobTypeID) {
                     whereFilter.OR.push({jobTypeID: {equals: jobTypeID.id}})
                 }
-
-                if (Object.values(JobStatus).some(status => filterValue?.includes(status))) {
-                    whereFilter.OR.push({status : { in: Object.values(JobStatus).filter(status => filterValue?.includes(status)).map(status => status as JobStatus) }});
-                }
             }
         }
+
+        const countFilter = JSON.parse(JSON.stringify(whereFilter));
+
+        if (status && Object.values(JobStatus).some(statusE => status?.toLowerCase().includes(statusE.toLowerCase()))) {
+            whereFilter.status = { in: Object.values(JobStatus).filter(statusE => status?.toLowerCase().includes(statusE.toLowerCase())).map(status => status as JobStatus) }
+        }
+
         
         let filterOptions: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, whereFilter] } : whereFilter;
-        
+        let countFilterOptions: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, countFilter] } : countFilter;
+
         try {
             let jobs;
             let counts = {};
@@ -198,7 +199,7 @@ class Job  {
             ) {
                 const statusCounts = await db.job.groupBy({
                     by: ['status'],
-                    where: filterOptions,
+                    where: countFilterOptions,
                     _count: true,
                 });
 
@@ -274,7 +275,7 @@ class Job  {
             ) {
                 const statusCounts = await db.job.groupBy({
                     by: ['status'],
-                    where: filterOptions,
+                    where: countFilterOptions,
                     _count: true,
                 });
 
