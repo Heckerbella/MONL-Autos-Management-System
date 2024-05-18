@@ -248,6 +248,10 @@ class InvoiceController {
                 {customerID: {in: customerIDArray}},
                 { jobTypeID: { equals: parseInt(filterValue) } },
             ]
+
+            if (filterValue.toLowerCase() === 'paid') {
+                whereFilter.OR.push({paid: true})
+            }
         }
 
         try {
@@ -298,7 +302,7 @@ class InvoiceController {
                     },
                 },
                 orderBy: {
-                    invoiceNo: 'desc'
+                    createdAt: 'desc'
                 }
             });
             res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});

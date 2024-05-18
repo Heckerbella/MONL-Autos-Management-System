@@ -137,8 +137,8 @@ class Job  {
             })
             
             if (customerID) {
-                whereFilter.AND = [{
-                    OR: [{
+                whereFilter.AND = [
+                    {OR: [{
                         vehicleID: {
                             in: await db.vehicle.findMany({
                                 where: {
@@ -149,12 +149,15 @@ class Job  {
                                 },
                             }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
                         },
-                        status: { equals: filterValue as JobStatus | undefined }
-                    }],
-                    customerID: parseInt(customerID, 10),
-                }];
-                if (jobTypeID &&  whereFilter.AND[0].OR?.[0]) {
-                    whereFilter.AND[0].OR[0].jobTypeID = jobTypeID.id
+                    }]},
+                    {customerID: {equals: parseInt(customerID, 10)}},
+                ];
+                if (jobTypeID && whereFilter.AND[0].OR) {
+                    whereFilter.AND[0].OR.push({jobTypeID: {equals: jobTypeID.id}});
+                }
+
+                if (Object.values(JobStatus).some(status => filterValue?.includes(status)) && whereFilter.AND[0].OR) {
+                    whereFilter.AND[0].OR.push({status: { in: Object.values(JobStatus).filter(status => filterValue?.includes(status)).map(status => status as JobStatus) }});
                 }
             } else {
                 whereFilter.OR = [{
@@ -168,10 +171,13 @@ class Job  {
                             },
                         }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
                     },
-                    status: { equals: filterValue as JobStatus | undefined }
                 }]
-                if (jobTypeID &&  whereFilter.OR?.[0]) {
-                    whereFilter.OR[0].jobTypeID = jobTypeID.id
+                if (jobTypeID) {
+                    whereFilter.OR.push({jobTypeID: {equals: jobTypeID.id}})
+                }
+
+                if (Object.values(JobStatus).some(status => filterValue?.includes(status))) {
+                    whereFilter.OR.push({status : { in: Object.values(JobStatus).filter(status => filterValue?.includes(status)).map(status => status as JobStatus) }});
                 }
             }
         }
@@ -180,13 +186,30 @@ class Job  {
         
         try {
             let jobs;
-            let totalCount;
+            let counts = {};
         
             if (page !== undefined && limit !== undefined) {
             // Pagination is requested
-            totalCount = await db.job.count({
-                where: filterOptions,
-            });
+
+            if (
+                true
+                // !filterOptions.OR?.some(option => 'status' in option) ||
+                // (Array.isArray(filterOptions.AND) && filterOptions.AND.length > 0 && !filterOptions.AND[0].OR?.some(option => 'status' in option))
+            ) {
+                const statusCounts = await db.job.groupBy({
+                    by: ['status'],
+                    where: filterOptions,
+                    _count: true,
+                });
+
+                const statusCountsMap = Object.values(JobStatus).reduce((acc, status) => {
+                    acc[status] = statusCounts.find(statusCount => statusCount.status === status)?._count ?? 0;
+                    return acc;
+                }, {} as { [status in JobStatus]: number });
+
+                const totalStatusCounts = Object.values(JobStatus).reduce((acc, status) => acc + (statusCountsMap[status] ?? 0), 0);
+                counts = {...statusCountsMap, TOTAL: totalStatusCounts}
+            }
         
             // Retrieve jobs with pagination
             jobs = await db.job.findMany({
@@ -230,9 +253,10 @@ class Job  {
             // Check if the number of items returned is less than the specified limit
             const isLastPage = jobs.length < limit;
         
-            res.status(200).json({ data: jobs, totalCount, isLastPage });
+            res.status(200).json({ data: jobs, counts, isLastPage });
             } else {
             // No pagination
+            let counts = {};
             if (startDatetime && endDatetime) {
                 filterOptions = {
                     ...filterOptions,
@@ -241,7 +265,29 @@ class Job  {
                     lte: new Date(endDatetime),
                   },
                 };
-              }
+            }
+
+            if (
+                true
+                // !filterOptions.OR?.some(option => 'status' in option) ||
+                // (Array.isArray(filterOptions.AND) && filterOptions.AND.length > 0 && !filterOptions.AND[0].OR?.some(option => 'status' in option))
+            ) {
+                const statusCounts = await db.job.groupBy({
+                    by: ['status'],
+                    where: filterOptions,
+                    _count: true,
+                });
+
+                const statusCountsMap = Object.values(JobStatus).reduce((acc, status) => {
+                    acc[status] = statusCounts.find(statusCount => statusCount.status === status)?._count ?? 0;
+                    return acc;
+                }, {} as { [status in JobStatus]: number });
+
+                const totalStatusCounts = Object.values(JobStatus).reduce((acc, status) => acc + (statusCountsMap[status] ?? 0), 0);
+
+                counts = {...statusCountsMap, TOTAL: totalStatusCounts}
+            }
+
             jobs = await db.job.findMany({
                 where: filterOptions,
                 select: {
@@ -277,7 +323,7 @@ class Job  {
                 id: 'asc',
                 },
             });
-            res.status(200).json({ data: jobs });
+            res.status(200).json({ data: jobs, counts, msg: "Jobs Fetched Successfully!" });
             }
         } catch (error) {
             console.log(error)

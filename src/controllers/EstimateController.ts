@@ -214,7 +214,7 @@ class EstimateController {
                         },
                     },
                     orderBy: {
-                        id: 'asc'
+                        createdAt: 'desc'
                     },
                     skip: (page -1) * limit,
                     take: limit,
@@ -257,7 +257,7 @@ class EstimateController {
                         },
                     },
                     orderBy: {
-                        id: 'asc'
+                        createdAt: 'desc'
                     }
                 });
                 res.status(200).json({data: estimates, msg: "Estimates retrieved successfully."});
