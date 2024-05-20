@@ -47,7 +47,6 @@ export function compareArrays<T extends { id: number, qty?: number, jobMaterialI
     };
 }
 
-
   
 export function convertStringToObjectArray(inputString: string) {
     if (!isValidString(inputString)) {
@@ -140,21 +139,12 @@ class InvoiceController {
             }
             if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
 
-
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount);
-                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                    console.log("discount", "curr", total, "disc", discount)
-                }
-                if (discount_type == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    const discountFloat = parseFloat(discount);
-                    total -= total * (discountFloat / 100);
-                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
-                }
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
+            if (vat) {
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
             if (paid) data['paid'] = paid
@@ -175,13 +165,23 @@ class InvoiceController {
                     subTotal += itemTotal;
                     console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
                 }
-                if (vat) {
-                    const vatFloat = parseFloat(vat);
-                    const vatAmount = subTotal * (vatFloat / 100);
-                    subTotal += vatAmount;
-                    data["vat"] = vatFloat;
+                if (discount) {
+                    if (discount_type == "AMOUNT") {
+                        subTotal -= parseFloat(discount);
+                        if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                        console.log("discount", "curr", subTotal, "disc", discount)
+                    }
+                    if (discount_type == "PERCENTAGE") {
+                        if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                        const discountFloat = parseFloat(discount);
+                        subTotal -= subTotal * (discountFloat / 100);
+                        console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
+                    }
+
                     total += subTotal
-                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+
+                    data["discount"] = parseFloat(discount)
+                    data["discountType"] = discount_type
                 }
                 console.log("curr", total )
             }
@@ -512,28 +512,17 @@ class InvoiceController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount)
-                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                }
-                if (discount_type == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    total -= total * (parseFloat(discount)/100)
-                }
-                console.log("discount", "curr", total, "disc", discount)
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
-            } else if (invoice.discount) {
-                    if (invoice.discountType == "AMOUNT") {
-                        total -= parseFloat(invoice.discount.toString())
-                        if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                    }
-                    if (invoice.discountType == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    total -= total * (parseFloat(invoice.discount.toString())/100)
-                    }
-                    console.log("discount", "curr", total, "disc", invoice.discount)
+            if (vat && total > 0) {
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+            } else if (invoice.vat && total > 0) {
+                const vatFloat = parseFloat(invoice.vat.toString());
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
             if (paid) data['paid'] = paid
@@ -575,6 +564,32 @@ class InvoiceController {
                 const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
                 subTotal += productCostNumber * jobMaterial.qty;
                 console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
+            }
+
+            if (discount) {
+                if (discount_type == "AMOUNT") {
+                    subTotal -= parseFloat(discount)
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                }
+                if (discount_type == "PERCENTAGE") {
+                    if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    subTotal -= subTotal * (parseFloat(discount)/100)
+                }
+                console.log("discount", "curr", subTotal, "disc", discount)
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+                total += subTotal
+            } else if (invoice.discount) {
+                if (invoice.discountType == "AMOUNT") {
+                    subTotal -= parseFloat(invoice.discount.toString())
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                }
+                if (invoice.discountType == "PERCENTAGE") {
+                    if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    subTotal -= subTotal * (parseFloat(invoice.discount.toString())/100)
+                }
+                console.log("discount", "curr", subTotal, "disc", invoice.discount)
+                total += subTotal
             }
 
             await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
