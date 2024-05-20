@@ -76,23 +76,6 @@ class EstimateController {
             }
             if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
 
-
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount);
-                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                    console.log("discount", "curr", total, "disc", discount)
-                }
-                if (discount_type == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    const discountFloat = parseFloat(discount);
-                    total -= total * (discountFloat / 100);
-                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
-                }
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
-            }
-
             if (vat) {
                 const vatFloat = parseFloat(vat);
                 const vatAmount = total * (vatFloat / 100);
@@ -131,12 +114,11 @@ class EstimateController {
                         console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
                     }
 
-                    total += subTotal
-
                     data["discount"] = parseFloat(discount)
                     data["discountType"] = discount_type
                 }
-
+                
+                total += subTotal
                 console.log("curr", total )
             }
 
@@ -452,6 +434,8 @@ class EstimateController {
                 console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
             }
 
+            await db.estimateJobMaterial.deleteMany({where: {estimateID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
+            
             if (discount) {
                 if (discount_type == "AMOUNT") {
                     subTotal -= parseFloat(discount)
@@ -475,22 +459,6 @@ class EstimateController {
                     subTotal -= subTotal * (parseFloat(estimate.discount.toString())/100)
                 }
                 console.log("discount", "curr", subTotal, "disc", estimate.discount)
-                total += subTotal
-            }
-
-            await db.estimateJobMaterial.deleteMany({where: {estimateID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
-
-            if (vat && subTotal > 0) {
-                const vatFloat = parseFloat(vat);
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
-            } else if (estimate.vat && subTotal > 0) {
-                const vatFloat = parseFloat(estimate.vat.toString());
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
             }
 
             total += subTotal

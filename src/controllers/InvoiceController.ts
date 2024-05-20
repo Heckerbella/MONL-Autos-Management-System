@@ -178,15 +178,14 @@ class InvoiceController {
                         console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
                     }
 
-                    total += subTotal
-
+                    
                     data["discount"] = parseFloat(discount)
                     data["discountType"] = discount_type
                 }
+
+                total += subTotal
                 console.log("curr", total )
             }
-
-
 
             data["amount"] = total.toFixed(2)
 
@@ -197,7 +196,6 @@ class InvoiceController {
                 const job = await db.job.findUnique({where: {id: job_id}})
                 if (job) data["jobID"] = job.id
             }
-
 
             const invoice = await db.invoice.create({
                 data
@@ -565,7 +563,9 @@ class InvoiceController {
                 subTotal += productCostNumber * jobMaterial.qty;
                 console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
             }
-
+            
+            await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
+            
             if (discount) {
                 if (discount_type == "AMOUNT") {
                     subTotal -= parseFloat(discount)
@@ -589,23 +589,6 @@ class InvoiceController {
                     subTotal -= subTotal * (parseFloat(invoice.discount.toString())/100)
                 }
                 console.log("discount", "curr", subTotal, "disc", invoice.discount)
-                total += subTotal
-            }
-
-            await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
-
-            if (vat && subTotal > 0) {
-                const vatFloat = parseFloat(vat);
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
-            } else if (invoice.vat && subTotal > 0) {
-                const vatFloat = parseFloat(invoice.vat.toString());
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
-
             }
 
             total += subTotal
