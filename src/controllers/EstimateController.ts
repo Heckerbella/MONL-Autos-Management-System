@@ -76,21 +76,12 @@ class EstimateController {
             }
             if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
 
-
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount);
-                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                    console.log("discount", "curr", total, "disc", discount)
-                }
-                if (discount_type == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    const discountFloat = parseFloat(discount);
-                    total -= total * (discountFloat / 100);
-                    console.log("discount", "curr", total, "disc", discount, "val", discountFloat)
-                }
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
+            if (vat) {
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
             let materialIDs, jobMaterials = [];
@@ -110,15 +101,24 @@ class EstimateController {
                     console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
                 }
 
-                if (vat) {
-                    const vatFloat = parseFloat(vat);
-                    const vatAmount = subTotal * (vatFloat / 100);
-                    subTotal += vatAmount;
-                    data["vat"] = vatFloat;
-                    total += subTotal
-                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-                }
+                if (discount) {
+                    if (discount_type == "AMOUNT") {
+                        subTotal -= parseFloat(discount);
+                        if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                        console.log("discount", "curr", subTotal, "disc", discount)
+                    }
+                    if (discount_type == "PERCENTAGE") {
+                        if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                        const discountFloat = parseFloat(discount);
+                        subTotal -= subTotal * (discountFloat / 100);
+                        console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
+                    }
 
+                    data["discount"] = parseFloat(discount)
+                    data["discountType"] = discount_type
+                }
+                
+                total += subTotal
                 console.log("curr", total )
             }
 
@@ -377,33 +377,21 @@ class EstimateController {
             }
             if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Service Charge cannot be a negative value' });
 
-
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            if (discount) {
-                if (discount_type == "AMOUNT") {
-                    total -= parseFloat(discount)
-                    if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                }
-                if (discount_type == "PERCENTAGE") {
-                    if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    total -= total * (parseFloat(discount)/100)
-                }
-                console.log("discount", "curr", total, "disc", discount)
-                data["discount"] = parseFloat(discount)
-                data["discountType"] = discount_type
-            } else if (estimate.discount) {
-                    if (estimate.discountType == "AMOUNT") {
-                        total -= parseFloat(estimate.discount.toString())
-                        if (total < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                    }
-                    if (estimate.discountType == "PERCENTAGE") {
-                        if (total == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                        total -= total * (parseFloat(estimate.discount.toString())/100)
-                    }
-                    console.log("discount", "curr", total, "disc", estimate.discount)
+            if (vat && total > 0) {
+                const vatFloat = parseFloat(vat);
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                data["vat"] = vatFloat;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+            } else if (estimate.vat && total > 0) {
+                const vatFloat = parseFloat(estimate.vat.toString());
+                const vatAmount = total * (vatFloat / 100);
+                total += vatAmount;
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
@@ -447,19 +435,30 @@ class EstimateController {
             }
 
             await db.estimateJobMaterial.deleteMany({where: {estimateID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
-
-            if (vat && subTotal > 0) {
-                const vatFloat = parseFloat(vat);
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
-            } else if (estimate.vat && subTotal > 0) {
-                const vatFloat = parseFloat(estimate.vat.toString());
-                const vatAmount = subTotal * (vatFloat / 100);
-                subTotal += vatAmount;
-                console.log("vat", "curr", subTotal, "vat", vatFloat, "val", vatAmount)
-
+            
+            if (discount) {
+                if (discount_type == "AMOUNT") {
+                    subTotal -= parseFloat(discount)
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                }
+                if (discount_type == "PERCENTAGE") {
+                    if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    subTotal -= subTotal * (parseFloat(discount)/100)
+                }
+                console.log("discount", "curr", subTotal, "disc", discount)
+                data["discount"] = parseFloat(discount)
+                data["discountType"] = discount_type
+                total += subTotal
+            } else if (estimate.discount) {
+                if (estimate.discountType == "AMOUNT") {
+                    subTotal -= parseFloat(estimate.discount.toString())
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                }
+                if (estimate.discountType == "PERCENTAGE") {
+                    if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
+                    subTotal -= subTotal * (parseFloat(estimate.discount.toString())/100)
+                }
+                console.log("discount", "curr", subTotal, "disc", estimate.discount)
             }
 
             total += subTotal
