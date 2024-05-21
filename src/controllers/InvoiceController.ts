@@ -616,14 +616,23 @@ class InvoiceController {
 
     async deleteInvoice (req: Request, res: Response) {
         const { id } = req.params;
+        const idArray = id.split(";").map(id => parseInt(id, 10));
         try {
-            const invoice = await db.invoice.findUnique({where: {id: parseInt(id, 10)}})
+            if (idArray.length > 1) {
+                const invoices = await db.invoice.findMany({where: {id: {in: idArray}}})
 
-            if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
-            await db.invoice.delete({where: {id: parseInt(id, 10)}})
-            res.status(200).json({msg: "Invoice deleted successfully."});
+                if (invoices.length !== idArray.length) return res.status(404).json({ error_code: 404, msg: 'Some invoices not found.' });
+                await db.invoice.deleteMany({where: {id: {in: idArray}}})
+                res.status(200).json({msg: "Invoices deleted successfully."});
+            } else {
+                const invoice = await db.invoice.findUnique({where: {id: idArray[0]}})
+
+                if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
+                await db.invoice.delete({where: {id: idArray[0]}})
+                res.status(200).json({msg: "Invoice deleted successfully."});
+            }
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not delete invoice.' });
+            res.status(400).json({ error_code: 400, msg: 'Could not delete invoice(s).' });
         }
     }
 

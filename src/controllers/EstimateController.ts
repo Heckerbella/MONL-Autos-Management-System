@@ -479,14 +479,23 @@ class EstimateController {
 
     async deleteEstimate (req: Request, res: Response) {
         const { id } = req.params;
+        const idArray = id.split(";").map(id => parseInt(id, 10));
         try {
-            const estimate = await db.estimate.findUnique({where: {id: parseInt(id, 10)}})
+            if (idArray.length > 1) {
+                const estimates = await db.estimate.findMany({where: {id: {in: idArray}}})
 
-            if (!estimate) return res.status(404).json({ error_code: 404, msg: 'Estimate not found.' });
-            await db.estimate.delete({where: {id: parseInt(id, 10)}})
-            res.status(200).json({msg: "Estimate deleted successfully."});
+                if (estimates.length !== idArray.length) return res.status(404).json({ error_code: 404, msg: 'Some estimates not found.' });
+                await db.estimate.deleteMany({where: {id: {in: idArray}}})
+                res.status(200).json({msg: "Estimates deleted successfully."});
+            } else {
+                const estimate = await db.estimate.findUnique({where: {id: idArray[0]}})
+
+                if (!estimate) return res.status(404).json({ error_code: 404, msg: 'Estimate not found.' });
+                await db.estimate.delete({where: {id: idArray[0]}})
+                res.status(200).json({msg: "Estimate deleted successfully."});
+            }
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not delete estimate.' });
+            res.status(400).json({ error_code: 400, msg: 'Could not delete estimate(s).' });
         }
     } 
 }
