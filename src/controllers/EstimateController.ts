@@ -469,9 +469,11 @@ class EstimateController {
                     subTotal -= subTotal * (parseFloat(estimate.discount.toString())/100)
                 }
                 console.log("discount", "curr", subTotal, "disc", estimate.discount)
+                total += subTotal
+            } else {
+                total += subTotal
             }
 
-            total += subTotal
 
             data["amount"] = total
 
