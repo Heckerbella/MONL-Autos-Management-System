@@ -427,7 +427,17 @@ class InvoiceController {
                             modelName: true,
                             licensePlate: true,
                             chasisNo: true,
-                            mileage: true
+                            mileage: {
+                                select: {
+                                    id: true,
+                                    mileage: true,
+                                    createdAt: true,
+                                    updatedAt: true,
+                                },
+                                orderBy: {
+                                    createdAt: 'desc',
+                                }
+                            }
                         }
                     },
                     jobType: {
@@ -589,9 +599,11 @@ class InvoiceController {
                     subTotal -= subTotal * (parseFloat(invoice.discount.toString())/100)
                 }
                 console.log("discount", "curr", subTotal, "disc", invoice.discount)
+                total += subTotal
+            } else {
+                total += subTotal
             }
 
-            total += subTotal
 
             data["amount"] = total
 
