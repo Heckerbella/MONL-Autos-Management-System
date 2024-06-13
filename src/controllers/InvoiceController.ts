@@ -246,11 +246,19 @@ class InvoiceController {
 
             const customerIDArray = customerIDs.map((customer) => customer.id);
 
-            // whereFilter.customerID = { in: customerIDArray };
-            whereFilter.OR = [
-                {customerID: {in: customerIDArray}},
-                { jobTypeID: { equals: parseInt(filterValue) } },
-            ]
+            if (!isNaN(Number(filterValue))) {
+                try {
+                    const parsedFilterValue = parseInt(filterValue);
+                    whereFilter.OR = [
+                        { customerID: { in: customerIDArray } },
+                        { invoiceNo: { equals: parsedFilterValue } },
+                    ];
+                } catch {
+                    // Ignore parsing errors and continue with the existing whereFilter
+                }
+            } else {
+                whereFilter.customerID = { in: customerIDArray };
+            }
 
         }
 

@@ -172,7 +172,20 @@ class EstimateController {
 
             const customerIDArray = customerIDs.map((customer) => customer.id);
 
-            whereFilter.customerID = { in: customerIDArray };
+            
+            if (!isNaN(Number(filterValue))) {
+                try {
+                    const parsedFilterValue = parseInt(filterValue);
+                    whereFilter.OR = [
+                        { customerID: { in: customerIDArray } },
+                        { estimateNo: { equals: parsedFilterValue } },
+                    ];
+                } catch {
+                    // Ignore parsing errors and continue with the existing whereFilter
+                }
+            } else {
+                whereFilter.customerID = { in: customerIDArray };
+            }
         }
 
 
