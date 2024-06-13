@@ -181,6 +181,7 @@ class CustomerController {
                         { customerTypeID: { equals: parsedFilterValue } }, // or { in: [parseInt(filterValue), ...] } if you need multiple types
                         { companyName: { contains: filterValue } },
                         { firstName: { contains: filterValue } },
+                        { id: { equals: parsedFilterValue } }
                     ];
                 } else {
                     whereFilter.OR = [
