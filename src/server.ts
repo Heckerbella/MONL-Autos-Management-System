@@ -2,12 +2,16 @@ import express from 'express';
 import router from './routes';
 import cors from 'cors'
 import { triggerNotification } from './utils/novuModule';
+import morgan from 'morgan'
 const cron = require('node-cron');
 
 
 
-export const PORT = process.env.PORT || 5000;
+export const PORT = process.env.PORT || 6000;
+const morganEnv = process.env.NODE_ENV || 'dev';
+
 const app = express();
+app.use(morgan(morganEnv));
 app.use(express.json());
 app.use(cors({
   origin: '*',
