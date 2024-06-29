@@ -170,9 +170,36 @@ class EstimateController {
                 }
             });
 
-            const customerIDArray = customerIDs.map((customer) => customer.id);
+            const vehicleIDs = await db.vehicle.findMany({
+                where: {
+                    licensePlate: { contains: filterValue },
+                },
+                select: {
+                    id: true
+                }
+            });
 
-            whereFilter.customerID = { in: customerIDArray };
+            const customerIDArray = customerIDs.map((customer) => customer.id);
+            const vehicleIDArray = vehicleIDs.map((vehicle) => vehicle.id);
+
+            
+            if (!isNaN(Number(filterValue))) {
+                try {
+                    const parsedFilterValue = parseInt(filterValue);
+                    whereFilter.OR = [
+                        { customerID: { in: customerIDArray } },
+                        { vehicleID: { in: vehicleIDArray } },
+                        { estimateNo: { equals: parsedFilterValue } },
+                    ];
+                } catch {
+                    // Ignore parsing errors and continue with the existing whereFilter
+                }
+            } else {
+                whereFilter.OR = [
+                    {customerID : { in: customerIDArray }},
+                    { vehicleID: { in: vehicleIDArray } }
+                ]
+            }
         }
 
 
@@ -210,6 +237,7 @@ class EstimateController {
                             select: {
                                 modelNo: true,
                                 modelName: true,
+                                licensePlate: true,
                             }
                         },
                     },
@@ -253,6 +281,7 @@ class EstimateController {
                             select: {
                                 modelNo: true,
                                 modelName: true,
+                                licensePlate: true,
                             }
                         },
                     },

@@ -136,10 +136,49 @@ class Job  {
                     id: true
                 }
             })
-            
+
+            const customerIDs = await db.customer.findMany({
+                where: {
+                    firstName: { contains: filterValue }
+                },
+            })
+
             if (customerID) {
                 whereFilter.AND = [
-                    {OR: [{
+                    {
+                        OR: [
+                           {
+                                vehicleID: {
+                                    in: await db.vehicle.findMany({
+                                        where: {
+                                            licensePlate: { contains: filterValue }
+                                        },
+                                        select: {
+                                            id: true
+                                        },
+                                    }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
+                                },
+                            },
+                            {
+                                customerID: {
+                                    in: customerIDs.map((customer) => customer.id)
+                                }
+                            },
+                            {
+                                id: {
+                                    equals: parseInt(filterValue, 10) || 0
+                                }
+                            }
+                        ]
+                    },
+                    {customerID: {equals: parseInt(customerID, 10)}},
+                ];
+                if (jobTypeID && whereFilter.AND[0].OR) {
+                    whereFilter.AND[0].OR.push({jobTypeID: {equals: jobTypeID.id}});
+                }
+            } else {
+                whereFilter.OR = [
+                    {
                         vehicleID: {
                             in: await db.vehicle.findMany({
                                 where: {
@@ -150,25 +189,18 @@ class Job  {
                                 },
                             }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
                         },
-                    }]},
-                    {customerID: {equals: parseInt(customerID, 10)}},
-                ];
-                if (jobTypeID && whereFilter.AND[0].OR) {
-                    whereFilter.AND[0].OR.push({jobTypeID: {equals: jobTypeID.id}});
-                }
-            } else {
-                whereFilter.OR = [{
-                    vehicleID: {
-                        in: await db.vehicle.findMany({
-                            where: {
-                                licensePlate: { contains: filterValue }
-                            },
-                            select: {
-                                id: true
-                            },
-                        }).then((vehicleIds) => vehicleIds.map((vehicle) => vehicle.id)),
                     },
-                }]
+                    {
+                        customerID: {
+                            in: customerIDs.map((customer) => customer.id)
+                        }
+                    },
+                    {
+                        id: {
+                            equals: parseInt(filterValue, 10) || 0
+                        }
+                    }
+                ]
                 if (jobTypeID) {
                     whereFilter.OR.push({jobTypeID: {equals: jobTypeID.id}})
                 }
@@ -234,6 +266,7 @@ class Job  {
                 vehicleID: true,
                 vehicle: {
                     select: {
+                    id: true,
                     modelNo: true,
                     modelName: true,
                     licensePlate: true,
@@ -310,6 +343,7 @@ class Job  {
                 vehicleID: true,
                 vehicle: {
                     select: {
+                    id: true,
                     modelNo: true,
                     modelName: true,
                     licensePlate: true,

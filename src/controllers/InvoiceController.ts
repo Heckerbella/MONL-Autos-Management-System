@@ -244,13 +244,35 @@ class InvoiceController {
                 }
             });
 
-            const customerIDArray = customerIDs.map((customer) => customer.id);
+            const vehicleIDs = await db.vehicle.findMany({
+                where: {
+                    licensePlate: { contains: filterValue },
+                },
+                select: {
+                    id: true
+                }
+            });
 
-            // whereFilter.customerID = { in: customerIDArray };
-            whereFilter.OR = [
-                {customerID: {in: customerIDArray}},
-                { jobTypeID: { equals: parseInt(filterValue) } },
-            ]
+            const customerIDArray = customerIDs.map((customer) => customer.id);
+            const vehicleIDArray = vehicleIDs.map((vehicle) => vehicle.id);
+
+            if (!isNaN(Number(filterValue))) {
+                try {
+                    const parsedFilterValue = parseInt(filterValue);
+                    whereFilter.OR = [
+                        { customerID: { in: customerIDArray } },
+                        { vehicleID: { in: vehicleIDArray } },
+                        { invoiceNo: { equals: parsedFilterValue } },
+                    ];
+                } catch {
+                    // Ignore parsing errors and continue with the existing whereFilter
+                }
+            } else {
+                whereFilter.OR = [
+                    {customerID : { in: customerIDArray }},
+                    { vehicleID: { in: vehicleIDArray } }
+                ]
+            }
 
         }
 
@@ -305,6 +327,7 @@ class InvoiceController {
                             select: {
                                 modelNo: true,
                                 modelName: true,
+                                licensePlate: true,
                             }
                         },
                     },
@@ -361,6 +384,7 @@ class InvoiceController {
                             select: {
                                 modelNo: true,
                                 modelName: true,
+                                licensePlate: true,
                             }
                         },
                     },
