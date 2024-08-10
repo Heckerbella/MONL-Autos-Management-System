@@ -9,15 +9,19 @@ class Auth {
         try {
             const { email, password } = req.body;
 
+            if (!email || !password) {
+                return res.status(400).json({ error_code: 400, msg: 'Please provide email and password' });
+            }
+
             const user = await db.user.findUnique({ where: { email } })
             if (!user) {
-                res.status(401).json({error_code: 401, msg: 'Invalid credentials'});
+                return res.status(401).json({ error_code: 401, msg: 'Invalid credentials' });
             } else {
                 const encodedpassword = Buffer.from(password, 'utf8').toString("base64");
                 if (user.password === encodedpassword) {
                     const token = generateAccessToken(user.email)
                     const refreshToken = generateRefreshToken(user.email)
-                    res.status(200).json({
+                    return res.status(200).json({
                         message: 'Login successful',
                         data: {
                             id: user.id,
@@ -28,12 +32,13 @@ class Auth {
                         }
                     })
                 } else {
-                    res.status(401).json({error_code: 401, msg:'Invalid credentials'});
+                    return res.status(401).json({ error_code: 401, msg: 'Invalid credentials' });
                 }
             }
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Bad request'})
-        }    
+            console.error(error)
+            res.status(500).json({ error_code: 500, msg: 'Server Error' })
+        }
     }
 
     // async logout(req: Request, res: Response) {
@@ -42,13 +47,13 @@ class Auth {
     //         const {token} = cookies
 
     //         let bearer
-            
+
     //         const authHeader = req.headers['authorization'];
-            
+
     //         if (authHeader && authHeader.startsWith('Bearer ')) {
     //           bearer = authHeader.split(' ')[1];
     //         }
-            
+
     //         const tokenValue = token || bearer
 
     //         if (tokenValue) {
@@ -66,7 +71,7 @@ class Auth {
 
     async auth(req: Request, res: Response, next: NextFunction) {
         try {
-           
+
             const authHeader = req.headers['authorization'];
 
             const bearer = (authHeader?.split(' ')[1])?.replace(/^(['"])(.*?)\1$/, '$2');
@@ -78,37 +83,37 @@ class Auth {
                     const err: any = decodedToken.error
                     if (err instanceof jwt.JsonWebTokenError) {
                         return res.status(401).json({ error_code: 401, msg: 'Invalid token' });
-                      } else if (err instanceof jwt.TokenExpiredError) {
+                    } else if (err instanceof jwt.TokenExpiredError) {
                         return res.status(401).json({ error_code: 401, msg: 'Token has expired' });
-                      } else if (err instanceof jwt.NotBeforeError) {
+                    } else if (err instanceof jwt.NotBeforeError) {
                         return res.status(401).json({ error_code: 401, msg: 'Token cannot be used yet' });
-                      }
-                      return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
-                    
+                    }
+                    return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
+
                 } else {
                     const { email } = decodedToken?.data?.data ?? { email: null };
                     if (email) {
                         const user = await db.user.findUnique({ where: { email } });
-                        
+
                         if (user) {
-                            req.body = {...req.body, detokenizedEmail: email, detokenizedRole: user.roleID};
+                            req.body = { ...req.body, detokenizedEmail: email, detokenizedRole: user.roleID };
                             next();
                         }
                     } else {
-                        res.status(401).json({error_code: 401, msg: 'Unauthorized'});
+                        res.status(401).json({ error_code: 401, msg: 'Unauthorized' });
                     }
                 }
             } else {
-                    res.status(401).json({error_code: 401, msg: 'Unauthorized'});
+                res.status(401).json({ error_code: 401, msg: 'Unauthorized' });
             }
         } catch (error) {
-            res.status(500).json({error_code: 500, msg: 'Internal Server Error'});
+            res.status(500).json({ error_code: 500, msg: 'Internal Server Error' });
         }
     }
 
-    async refresh (req: Request, res: Response) {
+    async refresh(req: Request, res: Response) {
         const { refresh_token } = req.body
-        if (!refresh_token) return res.status(401).json({error_code: 400, msg: 'Unauthorized'});
+        if (!refresh_token) return res.status(401).json({ error_code: 400, msg: 'Unauthorized' });
 
         try {
             const decodedToken: DecodedToken = verifyRefreshToken(refresh_token?.replace(/^(['"])(.*?)\1$/, '$2'));
@@ -117,24 +122,24 @@ class Auth {
                 const err: any = decodedToken.error
                 if (err instanceof jwt.JsonWebTokenError) {
                     return res.status(401).json({ error_code: 401, msg: 'Invalid token' });
-                  } else if (err instanceof jwt.TokenExpiredError) {
+                } else if (err instanceof jwt.TokenExpiredError) {
                     return res.status(401).json({ error_code: 401, msg: 'Token has expired' });
-                  } else if (err instanceof jwt.NotBeforeError) {
+                } else if (err instanceof jwt.NotBeforeError) {
                     return res.status(401).json({ error_code: 401, msg: 'Token cannot be used yet' });
-                  }
-                  return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
-                
+                }
+                return res.status(500).json({ error_code: 500, msg: 'Something went wrong' });
+
             } else {
                 const { email, refresh } = decodedToken?.data?.data ?? { email: null, refresh: null };
                 if (email && refresh) {
                     const access_token = generateAccessToken(email)
-                    return res.status(200).json({data: {access_token}, msg: "Token refreshed successfully."});   
+                    return res.status(200).json({ data: { access_token }, msg: "Token refreshed successfully." });
                 } else {
-                    res.status(401).json({error_code: 401, msg: 'Unauthorized'});
+                    res.status(401).json({ error_code: 401, msg: 'Unauthorized' });
                 }
             }
         } catch (error) {
-            res.status(500).json({error_code: 500, msg: 'Internal Server Error'});
+            res.status(500).json({ error_code: 500, msg: 'Internal Server Error' });
         }
     }
 }
