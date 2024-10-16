@@ -15,16 +15,16 @@ export function isValidString(inputString: string) {
 export function compareArrays<T extends { id: number, qty?: number, jobMaterialID?: number, quantity?: number }>(
     arrayA: { id: number, qty: number }[],
     arrayB: T[]
-  ) {
+) {
     // console.log("arr A", arrayA)
     // Step 1: Identify objects in Array A that are missing in Array B
     const toBeAdded = arrayA.filter((itemA) => {
-      return !arrayB.some((itemB) => itemB.jobMaterialID === itemA.id);
+        return !arrayB.some((itemB) => itemB.jobMaterialID === itemA.id);
     });
-  
+
     // Step 2: Find objects that are common in both Array A and Array B and to be modified
     const toBeModified = arrayA.filter((itemA) => {
-      return arrayB.some((itemB) =>  itemB.jobMaterialID === itemA.id && itemA.qty !== itemB.quantity);
+        return arrayB.some((itemB) => itemB.jobMaterialID === itemA.id && itemA.qty !== itemB.quantity);
     });
 
     // Step 3: Find objects that are common in both Array A and Array B and to be modified
@@ -33,21 +33,21 @@ export function compareArrays<T extends { id: number, qty?: number, jobMaterialI
             itemB.jobMaterialID === itemA.id && itemB.quantity !== undefined && itemA.qty === itemB.quantity
         );
     });
-  
+
     // Step 4: Identify objects in Array B that are missing in Array A
     const toBeRemoved = arrayB.filter((itemB) => {
-      return !arrayA.some((itemA) => itemA.id === itemB.jobMaterialID);
+        return !arrayA.some((itemA) => itemA.id === itemB.jobMaterialID);
     });
-  
+
     return {
-      toBeAdded,
-      toBeModified,
-      toBeUnchanged,
-      toBeRemoved,
+        toBeAdded,
+        toBeModified,
+        toBeUnchanged,
+        toBeRemoved,
     };
 }
 
-  
+
 export function convertStringToObjectArray(inputString: string) {
     if (!isValidString(inputString)) {
         throw new Error('Invalid input string format');
@@ -69,20 +69,20 @@ class InvoiceController {
         // Initialize the invoiceNumberCount when the class is first constructed
         this.initializeInvoiceNumberCount();
     }
-    
 
-      // Initialize the invoiceNumberCount
+
+    // Initialize the invoiceNumberCount
     private async initializeInvoiceNumberCount() {
         if (InvoiceController.invoiceNumberCount === null) {
-        const lastInvoice = await db.invoice.findFirst({
-            orderBy: { invoiceNo: 'desc' }, // Find the invoice with the highest invoiceNo
-        });
+            const lastInvoice = await db.invoice.findFirst({
+                orderBy: { invoiceNo: 'desc' }, // Find the invoice with the highest invoiceNo
+            });
 
-        InvoiceController.invoiceNumberCount = lastInvoice ? lastInvoice.invoiceNo : 100000; // Default value if no invoices have been created yet
+            InvoiceController.invoiceNumberCount = lastInvoice ? lastInvoice.invoiceNo : 100000; // Default value if no invoices have been created yet
         }
     }
 
-    async createInvoice (req: Request, res: Response) {
+    async createInvoice(req: Request, res: Response) {
         const {
             job_type_id,
             description,
@@ -111,16 +111,16 @@ class InvoiceController {
         if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
 
         try {
-            const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
+            const customer = await db.customer.findUnique({ where: { id: parseInt(customer_id, 10) } })
             if (!customer) return res.status(404).json({ error_code: 404, msg: 'Customer not found.' });
-            const vehicle = await db.vehicle.findFirst({where: {ownerID: customer.id, id: parseInt(vehicle_id, 10)}})
-            if (!vehicle) return res.status(404).json({ error_code: 404, msg: "Vehicle not found or vehichle doesn't belong to customer."})
+            const vehicle = await db.vehicle.findFirst({ where: { ownerID: customer.id, id: parseInt(vehicle_id, 10) } })
+            if (!vehicle) return res.status(404).json({ error_code: 404, msg: "Vehicle not found or vehichle doesn't belong to customer." })
             if ((discount_type && !discount) || (discount && !discount_type)) return res.status(400).json({ error_code: 400, msg: 'Please provide both discount and discount_type.' });
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
             InvoiceController.invoiceNumberCount! += 1;
-        
+
             const data: Prisma.InvoiceUncheckedCreateInput = {
                 customerID: parseInt(customer_id, 10),
                 jobTypeID: parseInt(job_type_id, 10),
@@ -157,13 +157,13 @@ class InvoiceController {
                 let subTotal = 0
                 for (const item of materialIDs) {
                     const { id, qty } = item
-                    const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
+                    const jobMaterial = await db.jobMaterial.findUnique({ where: { id } })
                     if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
                     jobMaterials.push(jobMaterial)
                     const productCostNumber = parseFloat(jobMaterial.productCost.toString());
                     const itemTotal = productCostNumber * qty;
                     subTotal += itemTotal;
-                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal )
+                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal)
                 }
                 if (discount) {
                     if (discount_type == "AMOUNT") {
@@ -178,22 +178,22 @@ class InvoiceController {
                         console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
                     }
 
-                    
+
                     data["discount"] = parseFloat(discount)
                     data["discountType"] = discount_type
                 }
 
                 total += subTotal
-                console.log("curr", total )
+                console.log("curr", total)
             }
 
             data["amount"] = total.toFixed(2)
 
-            const user = await db.user.findUnique({where: {email: detokenizedEmail}})
+            const user = await db.user.findUnique({ where: { email: detokenizedEmail } })
             if (user) data["createdByID"] = user.id
 
             if (job_id) {
-                const job = await db.job.findUnique({where: {id: job_id}})
+                const job = await db.job.findUnique({ where: { id: job_id } })
                 if (job) data["jobID"] = job.id
             }
 
@@ -214,9 +214,9 @@ class InvoiceController {
                 }
             }
 
-            if (draft_id) await db.invoiceDraft.delete({where: {id: parseInt(draft_id, 10)}})
+            if (draft_id) await db.invoiceDraft.delete({ where: { id: parseInt(draft_id, 10) } })
 
-            res.status(201).json({data: invoice, msg: "Invoice created successfully."});
+            res.status(201).json({ data: invoice, msg: "Invoice created successfully." });
         } catch (error) {
             console.error(error)
             res.status(400).json({ error_code: 400, msg: 'Could not create invoice.' });
@@ -224,7 +224,7 @@ class InvoiceController {
     }
 
 
-    async getInvoices (req: Request, res: Response) {
+    async getInvoices(req: Request, res: Response) {
         const filterValue = req.query?.filter as string || null;
         const paid = req.query?.paid as string || null;
         const page = Number(req.query.page) || undefined;
@@ -246,7 +246,10 @@ class InvoiceController {
 
             const vehicleIDs = await db.vehicle.findMany({
                 where: {
-                    licensePlate: { contains: filterValue },
+                    OR: [
+                        { licensePlate: { contains: filterValue } },
+                        { modelName: { contains: filterValue } },
+                    ]
                 },
                 select: {
                     id: true
@@ -269,7 +272,7 @@ class InvoiceController {
                 }
             } else {
                 whereFilter.OR = [
-                    {customerID : { in: customerIDArray }},
+                    { customerID: { in: customerIDArray } },
                     { vehicleID: { in: vehicleIDArray } }
                 ]
             }
@@ -277,12 +280,12 @@ class InvoiceController {
         }
 
         if (paid !== null && (paid.toLowerCase() === 'true' || paid.toLowerCase() === 'false')) {
-            whereFilter.paid = paid.toLowerCase()  === 'true'
+            whereFilter.paid = paid.toLowerCase() === 'true'
         }
 
         try {
             if (page !== undefined && limit !== undefined) {
-                let totalCount = await db.invoice.count({where: whereFilter});
+                let totalCount = await db.invoice.count({ where: whereFilter });
                 const invoices = await db.invoice.findMany({
                     where: whereFilter,
                     select: {
@@ -301,23 +304,23 @@ class InvoiceController {
                         discountType: true,
                         customerID: true,
                         createdBy: {
-                        select: {
-                            id: true,
-                            email: true
+                            select: {
+                                id: true,
+                                email: true
                             }
                         },
                         updatedBy: {
                             select: {
                                 id: true,
                                 email: true
-                                }
+                            }
                         },
                         customer: {
                             select: {
                                 firstName: true,
                                 lastName: true,
                                 email: true,
-                                phone:true,
+                                phone: true,
                                 companyName: true,
                                 companyContact: true,
                             }
@@ -334,12 +337,12 @@ class InvoiceController {
                     orderBy: {
                         createdAt: 'desc'
                     },
-                    skip: (page -1) * limit,
+                    skip: (page - 1) * limit,
                     take: limit,
                 });
 
                 const isLastPage = invoices.length < limit;
-                res.status(200).json({data: invoices,totalCount, isLastPage,  msg: "Invoices retrieved successfully."});
+                res.status(200).json({ data: invoices, totalCount, isLastPage, msg: "Invoices retrieved successfully." });
             } else {
                 const invoices = await db.invoice.findMany({
                     where: whereFilter,
@@ -358,23 +361,23 @@ class InvoiceController {
                         discountType: true,
                         customerID: true,
                         createdBy: {
-                        select: {
-                            id: true,
-                            email: true
+                            select: {
+                                id: true,
+                                email: true
                             }
                         },
                         updatedBy: {
                             select: {
                                 id: true,
                                 email: true
-                                }
+                            }
                         },
                         customer: {
                             select: {
                                 firstName: true,
                                 lastName: true,
                                 email: true,
-                                phone:true,
+                                phone: true,
                                 companyName: true,
                                 companyContact: true,
                             }
@@ -392,17 +395,17 @@ class InvoiceController {
                         createdAt: 'desc'
                     }
                 });
-                res.status(200).json({data: invoices, msg: "Invoices retrieved successfully."});
+                res.status(200).json({ data: invoices, msg: "Invoices retrieved successfully." });
             }
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });
         }
     }
 
-    async getInvoice (req: Request, res: Response) {
+    async getInvoice(req: Request, res: Response) {
         const { id } = req.params;
         try {
-            const invoice = await db.invoice.findUnique({ 
+            const invoice = await db.invoice.findUnique({
                 where: { id: parseInt(id, 10) },
                 select: {
                     id: true,
@@ -416,7 +419,7 @@ class InvoiceController {
                     discount: true,
                     job: true,
                     amount: true,
-                    discountType: true,   
+                    discountType: true,
                     createdBy: {
                         select: {
                             id: true,
@@ -481,19 +484,19 @@ class InvoiceController {
                                 }
                             }
                         }
-                    }            
+                    }
                 }
-             });
+            });
             if (!invoice) {
                 return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
             }
-            res.status(200).json({data: invoice, msg: "Invoice retrieved successfully."});
+            res.status(200).json({ data: invoice, msg: "Invoice retrieved successfully." });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoice.' });
         }
     }
 
-    async updateInvoice (req: Request, res: Response) {
+    async updateInvoice(req: Request, res: Response) {
         const { id } = req.params;
         const {
             description,
@@ -508,32 +511,32 @@ class InvoiceController {
             job_id,
             detokenizedEmail
         } = req.body
-        
+
         try {
-            const invoice = await db.invoice.findUnique({where: {id: parseInt(id, 10)}})
+            const invoice = await db.invoice.findUnique({ where: { id: parseInt(id, 10) } })
 
             if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
 
-            if (invoice.paid) res.status(400).json({error_code: 400, msg: "Invoice cannot be edited"})
+            if (invoice.paid) res.status(400).json({ error_code: 400, msg: "Invoice cannot be edited" })
             const data: Prisma.InvoiceUncheckedCreateInput = {} as Prisma.InvoiceUncheckedCreateInput
-    
+
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
             if (description) data['description'] = description
             if (job_type_id) {
-                const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
+                const jobType = await db.jobType.findUnique({ where: { id: parseInt(job_type_id, 10) } })
                 if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
                 data['jobTypeID'] = parseInt(job_type_id, 10)
             }
 
             let total = 0;
-    
+
             if (service_charge) {
                 let svc = parseFloat(service_charge);
                 total += svc;
                 data["serviceCharge"] = svc.toFixed(2)
                 console.log("svc", "curr", total, "svc_charge", svc)
-            } else if(invoice.serviceCharge) {
+            } else if (invoice.serviceCharge) {
                 total += parseFloat(invoice.serviceCharge.toString())
                 console.log("svc", "curr", total, "svc_charge", invoice.serviceCharge)
             }
@@ -561,9 +564,9 @@ class InvoiceController {
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
 
             const updateJobMaterials = convertStringToObjectArray(materials);
-            
+
             const jobMaterialFindAll = await db.jobMaterial.findMany({
-                where: {id: {in: updateJobMaterials.map(material => material.id)}}
+                where: { id: { in: updateJobMaterials.map(material => material.id) } }
             })
             if (jobMaterialFindAll.length != updateJobMaterials.length) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
 
@@ -595,11 +598,11 @@ class InvoiceController {
                 }
                 const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
                 subTotal += productCostNumber * jobMaterial.qty;
-                console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal",  productCostNumber * jobMaterial.qty )
+                console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal", productCostNumber * jobMaterial.qty)
             }
-            
-            await db.invoiceJobMaterial.deleteMany({where: {invoiceID: parseInt(id, 10), NOT: {jobMaterialID: {in: updateJobMaterials.map(material => material.id)}}}})
-            
+
+            await db.invoiceJobMaterial.deleteMany({ where: { invoiceID: parseInt(id, 10), NOT: { jobMaterialID: { in: updateJobMaterials.map(material => material.id) } } } })
+
             if (discount) {
                 if (discount_type == "AMOUNT") {
                     subTotal -= parseFloat(discount)
@@ -607,7 +610,7 @@ class InvoiceController {
                 }
                 if (discount_type == "PERCENTAGE") {
                     if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    subTotal -= subTotal * (parseFloat(discount)/100)
+                    subTotal -= subTotal * (parseFloat(discount) / 100)
                 }
                 console.log("discount", "curr", subTotal, "disc", discount)
                 data["discount"] = parseFloat(discount)
@@ -620,7 +623,7 @@ class InvoiceController {
                 }
                 if (invoice.discountType == "PERCENTAGE") {
                     if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                    subTotal -= subTotal * (parseFloat(invoice.discount.toString())/100)
+                    subTotal -= subTotal * (parseFloat(invoice.discount.toString()) / 100)
                 }
                 console.log("discount", "curr", subTotal, "disc", invoice.discount)
                 total += subTotal
@@ -631,18 +634,18 @@ class InvoiceController {
 
             data["amount"] = total
 
-            const user = await db.user.findUnique({where: {email: detokenizedEmail}})
+            const user = await db.user.findUnique({ where: { email: detokenizedEmail } })
             if (user) data["updatedByID"] = user.id
 
             if (job_id) {
-                const job = await db.job.findUnique({where: {id: job_id}})
+                const job = await db.job.findUnique({ where: { id: job_id } })
                 if (job) data["jobID"] = job.id
             }
             const updatedInvoice = await db.invoice.update({
-                where: {id: parseInt(id, 10)},
+                where: { id: parseInt(id, 10) },
                 data
             })
-            res.status(200).json({data: updatedInvoice, msg: "Invoice updated successfully."});
+            res.status(200).json({ data: updatedInvoice, msg: "Invoice updated successfully." });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not update invoice.' });
         }
@@ -650,22 +653,22 @@ class InvoiceController {
 
 
 
-    async deleteInvoice (req: Request, res: Response) {
+    async deleteInvoice(req: Request, res: Response) {
         const { id } = req.params;
         const idArray = id.split(";").map(id => parseInt(id, 10));
         try {
             if (idArray.length > 1) {
-                const invoices = await db.invoice.findMany({where: {id: {in: idArray}}})
+                const invoices = await db.invoice.findMany({ where: { id: { in: idArray } } })
 
                 if (invoices.length !== idArray.length) return res.status(404).json({ error_code: 404, msg: 'Some invoices not found.' });
-                await db.invoice.deleteMany({where: {id: {in: idArray}}})
-                res.status(200).json({msg: "Invoices deleted successfully."});
+                await db.invoice.deleteMany({ where: { id: { in: idArray } } })
+                res.status(200).json({ msg: "Invoices deleted successfully." });
             } else {
-                const invoice = await db.invoice.findUnique({where: {id: idArray[0]}})
+                const invoice = await db.invoice.findUnique({ where: { id: idArray[0] } })
 
                 if (!invoice) return res.status(404).json({ error_code: 404, msg: 'Invoice not found.' });
-                await db.invoice.delete({where: {id: idArray[0]}})
-                res.status(200).json({msg: "Invoice deleted successfully."});
+                await db.invoice.delete({ where: { id: idArray[0] } })
+                res.status(200).json({ msg: "Invoice deleted successfully." });
             }
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not delete invoice(s).' });
@@ -712,7 +715,7 @@ class InvoiceDraft {
 
                 for (const item of materialIDs) {
                     const { id, qty } = item
-                    const jobMaterial = await db.jobMaterial.findUnique({where: {id}})
+                    const jobMaterial = await db.jobMaterial.findUnique({ where: { id } })
                     if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
                     jobMaterials.push(jobMaterial)
                 }
@@ -735,27 +738,27 @@ class InvoiceDraft {
                 }
             }
 
-            res.status(201).json({data: invoiceDraft, msg: "Invoice Draft created successfully."});
+            res.status(201).json({ data: invoiceDraft, msg: "Invoice Draft created successfully." });
 
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not create invoice.' });
         }
     }
 
-    async getDrafts (req: Request, res: Response) {
+    async getDrafts(req: Request, res: Response) {
         try {
             const drafts = await db.invoiceDraft.findMany()
-            res.status(200).json({data: drafts, msg: "Invoic drafts retrieved successfully."});
+            res.status(200).json({ data: drafts, msg: "Invoic drafts retrieved successfully." });
 
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoice drafts.' });
         }
     }
 
-    async getDraft (req: Request, res: Response) {
+    async getDraft(req: Request, res: Response) {
         const { id } = req.params;
         try {
-            const draft = await db.invoiceDraft.findUnique({ 
+            const draft = await db.invoiceDraft.findUnique({
                 where: { id: parseInt(id, 10) },
                 select: {
                     id: true,
@@ -766,7 +769,7 @@ class InvoiceDraft {
                     vat: true,
                     discount: true,
                     job: true,
-                    discountType: true,   
+                    discountType: true,
                     customer: {
                         select: {
                             firstName: true,
@@ -789,7 +792,7 @@ class InvoiceDraft {
                             modelName: true,
                             licensePlate: true,
                             chasisNo: true,
-                            mileage:true
+                            mileage: true
                         }
                     },
                     jobType: {
@@ -809,19 +812,19 @@ class InvoiceDraft {
                                 }
                             }
                         }
-                    }            
+                    }
                 }
-             });
+            });
             if (!draft) {
                 return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
             }
-            res.status(200).json({data: draft, msg: "Draft retrieved successfully."});
+            res.status(200).json({ data: draft, msg: "Draft retrieved successfully." });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not retrieve draft.' });
-        }   
+        }
     }
 
-    async updateInvoice (req: Request, res: Response) {
+    async updateInvoice(req: Request, res: Response) {
         const { id } = req.params;
         const {
             description,
@@ -834,24 +837,24 @@ class InvoiceDraft {
             vat,
             job_id,
         } = req.body
-        
+
         try {
-            const draft = await db.invoiceDraft.findUnique({where: {id: parseInt(id, 10)}})
+            const draft = await db.invoiceDraft.findUnique({ where: { id: parseInt(id, 10) } })
 
             if (!draft) return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
 
             // Without<Prisma.InvoiceDraftUpdateInput, Prisma.InvoiceDraftUncheckedUpdateInput> & Prisma.InvoiceDraftUncheckedUpdateInput
             const data: Prisma.InvoiceDraftUncheckedUpdateInput = {} as Prisma.InvoiceDraftUncheckedUpdateInput
-    
+
             if (due_date && !isValidDate(due_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for due_date. Please use the date format YYYY-MM-DD.' });
             if (due_date) data['dueDate'] = (new Date(due_date)).toISOString()
             if (description) data['description'] = description
             if (job_type_id) {
-                const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
+                const jobType = await db.jobType.findUnique({ where: { id: parseInt(job_type_id, 10) } })
                 if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
                 data['jobTypeID'] = parseInt(job_type_id, 10)
             }
-    
+
             if (service_charge) {
                 data["serviceCharge"] = parseFloat(service_charge)
             }
@@ -862,13 +865,13 @@ class InvoiceDraft {
 
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
 
-            const jobMaterials = await db.invoiceJobMaterial.findMany({where: {invoiceID: parseInt(id, 10)}});
+            const jobMaterials = await db.invoiceJobMaterial.findMany({ where: { invoiceID: parseInt(id, 10) } });
             const updateJobMaterials = convertStringToObjectArray(materials);
-            
-            const {toBeAdded, toBeModified, toBeUnchanged, toBeRemoved} = compareArrays<InvoiceJobMaterial>(updateJobMaterials, jobMaterials);
+
+            const { toBeAdded, toBeModified, toBeUnchanged, toBeRemoved } = compareArrays<InvoiceJobMaterial>(updateJobMaterials, jobMaterials);
 
             for (const jobMaterial of toBeAdded) {
-                const jobMaterialFind = await db.jobMaterial.findUnique({where: {id: jobMaterial.id}})
+                const jobMaterialFind = await db.jobMaterial.findUnique({ where: { id: jobMaterial.id } })
                 if (!jobMaterialFind) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
                 await db.invoiceJobMaterial.create({
                     data: {
@@ -877,22 +880,22 @@ class InvoiceDraft {
                         quantity: jobMaterial.qty,
                         price: jobMaterialFind.productCost
                     }
-                })      
+                })
             }
 
             for (const jobMaterial of toBeModified) {
-                const jobMaterialGet = await db.invoiceJobMaterial.findFirst({where: {AND: {jobMaterialID: jobMaterial.id, invoiceID: parseInt(id, 10)}}})
+                const jobMaterialGet = await db.invoiceJobMaterial.findFirst({ where: { AND: { jobMaterialID: jobMaterial.id, invoiceID: parseInt(id, 10) } } })
                 if (jobMaterialGet) {
                     await db.invoiceJobMaterial.update({
-                        where: {id: jobMaterialGet.id},
-                        data: {quantity: jobMaterial.qty}
+                        where: { id: jobMaterialGet.id },
+                        data: { quantity: jobMaterial.qty }
                     })
                 }
             }
 
 
             for (const jobMaterial of toBeRemoved) {
-                await db.invoiceJobMaterial.delete({where: {id: jobMaterial.id}})
+                await db.invoiceJobMaterial.delete({ where: { id: jobMaterial.id } })
             }
 
             if (discount) {
@@ -905,20 +908,20 @@ class InvoiceDraft {
             }
 
             if (job_id) {
-                const job = await db.job.findUnique({where: {id: job_id}})
+                const job = await db.job.findUnique({ where: { id: job_id } })
                 if (job) data["jobID"] = job.id
             }
             const updatedInvoiceDraft = await db.invoiceDraft.update({
-                where: {id: parseInt(id, 10)},
+                where: { id: parseInt(id, 10) },
                 data
             })
-            res.status(200).json({data: updatedInvoiceDraft, msg: "Invoice Draft updated successfully."});
+            res.status(200).json({ data: updatedInvoiceDraft, msg: "Invoice Draft updated successfully." });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not update draft.' });
         }
     }
 
-    async deleteDraft (req: Request, res: Response) {
+    async deleteDraft(req: Request, res: Response) {
         try {
             const draft = await db.invoiceDraft.delete({
                 where: {
@@ -928,7 +931,7 @@ class InvoiceDraft {
             if (!draft) {
                 return res.status(404).json({ error_code: 404, msg: 'Draft not found.' });
             }
-            res.status(200).json({data: draft, msg: "Draft deleted successfully."});
+            res.status(200).json({ data: draft, msg: "Draft deleted successfully." });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not delete draft.' });
         }
