@@ -7,7 +7,7 @@ const cron = require('node-cron');
 
 
 
-export const PORT = process.env.PORT || 6000;
+export const PORT = process.env.PORT || 8000;
 const morganEnv = process.env.MORGAN_ENV || 'dev';
 
 const app = express();

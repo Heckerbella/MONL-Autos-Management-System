@@ -4,7 +4,7 @@ import { DecodedToken, generateAccessToken, generateRefreshToken, verifyRefreshT
 import jwt, { JwtPayload } from 'jsonwebtoken'
 
 
-class Auth {
+class Auth { 
     async login(req: Request, res: Response) {
         try {
             const { email, password } = req.body;

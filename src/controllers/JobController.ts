@@ -10,6 +10,50 @@ function isValidJobStatus(status: string) {
 
 
 class Job  {
+
+    //NEW FUNCTION
+    async createJobType (req: Request, res: Response) {
+        // detokenizedRole is expected from an authentication middleware
+        const { name, detokenizedRole } = req.body;
+
+        try {
+            // Authorization check: Ensure the user is an admin
+            const role = await db.role.findUnique({ where: { id: detokenizedRole } });
+
+            if (role && role.name === "admin") {
+                if (!name) {
+                    return res.status(400).json({ error_code: 400, msg: 'Missing information: Job type name is required.' });
+                }
+
+                // Check if a job type with the same name already exists using findFirst
+                // This does not require 'name' to be @unique in your Prisma schema.
+                const existingJobType = await db.jobType.findFirst({
+                    where: { name: name as string }
+                });
+
+                if (existingJobType) {
+                    return res.status(409).json({ error_code: 409, msg: 'Job type with this name already exists.' });
+                }
+
+                // Create the new job type
+                const newJobType = await db.jobType.create({
+                    data: {
+                        name: name as string,
+                    }
+                });
+
+                res.status(201).json({ data: newJobType, msg: "Job type created successfully." });
+
+            } else {
+                // Not authorized: User is not an admin
+                res.status(401).json({ error_code: 401, msg: 'You are not authorized to create a job type.' });
+            }
+        } catch (error) {
+            console.error("Error creating job type:", error);
+            res.status(500).json({ error_code: 500, msg: 'Internal server error.' });
+        }
+    }
+
     async getJobTypes (req: Request, res: Response) {
         try {
             const jobTypes = await db.jobType.findMany({

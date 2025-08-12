@@ -33,6 +33,7 @@ router.get('/dashboard', auth.auth, dashboardController.getDashboardData)
 const userRouter = express.Router();
 router.use('/users', userRouter);
 userRouter.post('/', auth.auth, userController.createUser)
+userRouter.post('/v2', userController.createUserV2) //NEW ROUTE
 userRouter.get('/', auth.auth, userController.getUsers)
 userRouter.get('/me', auth.auth, userController.getMe)
 userRouter.get('/roles', auth.auth, userController.getUserRoles)
@@ -78,6 +79,7 @@ jobRouter.post('/', auth.auth, jobController.job.createJob)
 jobRouter.get('/', auth.auth, jobController.job.getJobs)
 jobRouter.post('/report', auth.auth, jobController.job.getJobs)
 jobRouter.get('/types', auth.auth, jobController.job.getJobTypes)
+jobRouter.post('/types', auth.auth, jobController.job.createJobType) //NEW ROUTE 
 jobRouter.get('/:id', auth.auth, jobController.job.getJob)
 jobRouter.put('/:id', auth.auth, jobController.job.updateJob)
 jobRouter.delete('/:id', auth.auth, jobController.job.deleteJob)

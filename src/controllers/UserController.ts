@@ -1,7 +1,7 @@
 import { db } from "../../src/utils/prismaClient";
 import { Request, Response } from "express";
 import { generateUniqueId } from "../utils/general";
-import { addSubscriberToTopic } from "../utils/novuModule";
+import { addSubscriberToTopic } from "../utils/novuModule"; 
 
 class UserController {
     async createUser (req: Request, res: Response) {
@@ -45,6 +45,49 @@ class UserController {
 
         } else {
             res.status(401).json({error_code: 401, msg: 'You are not authorized to create a user.'});
+        }
+    }
+
+
+    //NEW FUNCTION
+    async createUserV2 (req: Request, res: Response) {
+        // Removed detokenizedRole from destructuring as it's no longer used for authorization
+        const { email, password } = req.body; 
+
+        // Removed the role lookup and the if (role && role.name == "admin") check
+        // The logic for creating a user now directly follows.
+        try {
+            if (email && password) {
+                let user = await db.user.findUnique({where : { email}})
+
+                if (user) return res.status(400).json({ error_code: 400, msg: 'User already exists.' })
+
+                let subID = generateUniqueId()
+                while ((await db.user.findUnique({where: {subscriberID: subID}}))) {
+                    subID = generateUniqueId()
+                }
+    
+                user = await db.user.create({data: {
+                    email: email as string,
+                    password: Buffer.from(password as string, 'utf8').toString("base64"),
+                    subscriberID: subID,
+                    roleID: 2 // Assuming a default role for newly created users
+                }})
+        
+                if (user) {
+                    // decode password (optional, typically not sent back)
+                    user.password = Buffer.from(user.password, 'base64').toString('utf8');
+                    await (user.subscriberID && addSubscriberToTopic([user.subscriberID]))
+                    res.status(201).json({data: user, msg: "User created successfully."});
+                } else {
+                    res.status(400).json({ error_code: 400, msg: 'Could not create user.'});
+                }
+            } else {
+                res.status(400).json({error_code: 400, msg: 'Missing information.'});
+            }                 
+        } catch (error) {
+            console.error(error); // Log the error for debugging
+            return res.status(500).json({error_code: 500, msg: 'Internal server error.'})
         }
     }
 

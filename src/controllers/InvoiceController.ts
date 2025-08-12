@@ -119,13 +119,30 @@ class InvoiceController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            InvoiceController.invoiceNumberCount! += 1;
+            //InvoiceController.invoiceNumberCount! += 1;
+            // --- START CHANGES HERE ---
+
+            // 1. Find the highest existing invoice number
+            const latestInvoice = await db.invoice.findFirst({
+                orderBy: {
+                    invoiceNo: 'desc',
+                },
+                select: {
+                    invoiceNo: true,
+                },
+            });
+
+            // 2. Calculate the next invoice number
+            const nextInvoiceNo = latestInvoice ? latestInvoice.invoiceNo + 1 : 1; // Start from 1 if no invoices exist yet
+
+            // --- END CHANGES HERE ---
 
             const data: Prisma.InvoiceUncheckedCreateInput = {
                 customerID: parseInt(customer_id, 10),
                 jobTypeID: parseInt(job_type_id, 10),
                 vehicleID: parseInt(vehicle_id, 10),
-                invoiceNo: InvoiceController.invoiceNumberCount!,
+                //invoiceNo: InvoiceController.invoiceNumberCount!,
+                invoiceNo: nextInvoiceNo, // Use the dynamically generated number
                 description,
                 dueDate: due_date ? (new Date(due_date)).toISOString() : null
             }
