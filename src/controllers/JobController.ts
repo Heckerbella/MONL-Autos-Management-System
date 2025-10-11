@@ -11,7 +11,6 @@ function isValidJobStatus(status: string) {
 
 class Job  {
 
-    //NEW FUNCTION
     async createJobType (req: Request, res: Response) {
         // detokenizedRole is expected from an authentication middleware
         const { name, detokenizedRole } = req.body;
@@ -54,16 +53,149 @@ class Job  {
         }
     }
 
-    async getJobTypes (req: Request, res: Response) {
+    async getJobTypes(req: Request, res: Response) {
+        const name = req.query?.name?.toString() ?? "";
+        const page = parseInt(req.query?.page?.toString() ?? "1");
+        const limit = parseInt(req.query?.limit?.toString() ?? "10");
+
         try {
-            const jobTypes = await db.jobType.findMany({
-                orderBy: {
-                    id: 'asc'
+            let jobTypes;
+            let totalCount = 0;
+
+            const whereClause = {
+                name: {
+                    contains: name,
+                    // mode: "insensitive", // Note: Use for case-insensitive search on PostgreSQL
+                },
+            };
+
+            // Check if pagination parameters are provided
+            if (!req.query.page && !req.query.limit) {
+                // If not, fetch all matching job types
+                jobTypes = await db.jobType.findMany({
+                    where: whereClause,
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                });
+                totalCount = jobTypes.length;
+            } else {
+                // If yes, retrieve job types with pagination
+                jobTypes = await db.jobType.findMany({
+                    where: whereClause,
+                    orderBy: {
+                        createdAt: 'desc',
+                    },
+                    skip: (page - 1) * limit, // Calculate the offset
+                    take: limit, // Limit the number of items
+                });
+
+                // Get the total count for pagination UI
+                totalCount = await db.jobType.count({
+                    where: whereClause,
+                });
+            }
+
+            const isLastPage = (page * limit) >= totalCount;
+
+            res.status(200).json({ data: jobTypes, totalCount, isLastPage });
+        } catch (error) {
+            console.error("Error getting job types:", error);
+            res.status(400).json({ error_code: 400, msg: 'Could not get job types.' });
+        }
+    }
+    
+    async getJobTypeById(req: Request, res: Response) {
+        const idParam = req.params.id; // Retrieves ID from the URL path (e.g., /job-types/123)
+
+        // 2. CONVERT THE STRING ID TO A NUMBER
+        const id = parseInt(idParam); 
+        
+        // Optional: Add validation to ensure the conversion was successful
+        if (isNaN(id)) {
+            return res.status(400).json({ msg: 'Invalid Job Type ID provided.' });
+        }
+        try {
+            const jobType = await db.jobType.findUnique({
+                where: {
+                    id: id,
+                },
+            });
+
+            if (!jobType) {
+                return res.status(404).json({ msg: "Job type not found." });
+            }
+
+            res.status(200).json({ data: jobType });
+
+        } catch (error) {
+            console.error("Error getting job type by id:", error);
+            res.status(400).json({ error_code: 400, msg: 'Could not get job type by id.' });
+        }
+    }
+
+    async updateJobType (req: Request, res: Response) {
+        const { id } = req.params;
+        const { name } = req.body;
+
+        if (!name) return res.status(400).json({ error_code: 400, msg: 'Job type name is required.' });
+
+        try {
+            const jobType = await db.jobType.findUnique({where: {id: parseInt(id, 10)}})
+            if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
+            
+            // Check if another job type with the new name already exists
+            const existingJobType = await db.jobType.findFirst({
+                where: { 
+                    name: name as string,
+                    NOT: { id: parseInt(id, 10) } // Exclude the current job type
                 }
             });
-            res.status(200).json({data: jobTypes});
+
+            if (existingJobType) {
+                return res.status(409).json({ error_code: 409, msg: 'Job type with this name already exists.' });
+            }
+
+
+            const updatedJobType = await db.jobType.update({
+                where: {
+                    id: parseInt(id, 10)
+                },
+                data: {
+                    name: name as string
+                }
+            })
+
+            res.status(200).json({data: updatedJobType, msg: "Job type updated successfully."});
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not get job types.' });
+            console.error("Error updating job type:", error);
+            res.status(500).json({ error_code: 500, msg: 'Internal server error.' });
+        }
+    }
+
+    async deleteJobType (req: Request, res: Response) {
+        const {id} = req.params
+        
+        try {
+            const jobType = await db.jobType.findUnique({where: {id: parseInt(id, 10)}})
+            if (!jobType) return res.status(404).json({ error_code: 404, msg: 'Job type not found.' });
+            
+            // Check for dependent records (jobs, invoices, estimates)
+            // You may need to adjust this based on your Prisma 'onDelete' setting
+            // For a soft delete or a check for dependents:
+            const dependents = await db.job.count({ where: { jobTypeID: parseInt(id, 10) } });
+
+            if (dependents > 0) {
+                return res.status(409).json({ error_code: 409, msg: 'Cannot delete job type as it is linked to one or more jobs.' });
+            }
+
+            const deletedJobType = await db.jobType.delete({ where : {id: parseInt(id, 10)}})
+            
+            res.status(200).json({data: deletedJobType, msg: "Job type deleted successfully."});
+
+        } catch (error) {
+            console.error("Error deleting job type:", error);
+            res.status(500).json({error_code: 500, msg: "Internal server error."})
         }
     }
 
@@ -74,22 +206,34 @@ class Job  {
             vehicle_id,
             delivery_date,
             status,
-            mileage
+            mileage,
+            customerIssue, // New field
+            technician,    // New field
+            supervisor,    // New field
+            receptionDate  // New field
         } = req.body
 
         if (
-            !job_type_id || 
+            !job_type_id ||
             !customer_id ||
             !vehicle_id
         ) {
             return res.status(400).json({ error_code: 400, msg: 'Missing information.' });
         }
 
+        if (delivery_date && !isValidDate(delivery_date)) {
+            return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
+        }
 
+        // Validate receptionDate if provided
+        if (receptionDate && !isValidDate(receptionDate)) {
+            return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for receptionDate. Please use the date format YYYY-MM-DD.' });
+        }
 
-        if (delivery_date && !isValidDate(delivery_date)) return res.status(400).json({ error_code: 400, msg: 'Incorrect Date format for delivery_date. Please use the date format YYYY-MM-DD.' });
+        if (status && !isValidJobStatus(status)) {
+            return res.status(400).json({ error_code: 400, msg: 'Invalid job status. Accepted values are: NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED' });
+        }
 
-        if (status && !isValidJobStatus(status)) return res.status(400).json({ error_code: 400, msg: 'Invalid job status. Accepted values are: NOT_STARTED, IN_PROGRESS, COMPLETED, CANCELLED' });
         try {
             const jobType = await db.jobType.findUnique({where: {id: parseInt(job_type_id, 10)}})
             const customer = await db.customer.findUnique({where: {id: parseInt(customer_id, 10)}})
@@ -100,19 +244,22 @@ class Job  {
             if (!vehicle) return res.status(404).json({ error_code: 404, msg: 'Vehicle not found.' });
             if (vehicle && vehicle.ownerID != customer.id) return res.status(400).json({ error_code: 400, msg: 'Vehicle does not belong to customer.' });
 
-            // let data: {[key: string]: number | Date | string | null } = {
             const data: Prisma.JobUncheckedCreateInput = {
                 jobTypeID: parseInt(job_type_id, 10),
                 customerID: parseInt(customer_id, 10),
                 vehicleID: parseInt(vehicle_id, 10),
             }
 
-            if (delivery_date) data["deliveryDate"] = (new Date(delivery_date)).toISOString()
+            if (delivery_date) data["deliveryDate"] = (new Date(delivery_date)).toISOString();
+            if (status) data["status"] = status;
+
+            // Assign new fields to the data object
+            if (customerIssue) data["customerIssue"] = customerIssue;
+            if (technician) data["technician"] = technician;
+            if (supervisor) data["supervisor"] = supervisor;
+            if (receptionDate) data["receptionDate"] = (new Date(receptionDate)).toISOString();
 
 
-            // let data: Prisma.JobCreateInput = {}
-
-            if (status) data["status"] = status
             if (mileage) {
                 const latestMilage = await db.mileage.findFirst({
                     where: {
@@ -122,7 +269,7 @@ class Job  {
                         createdAt: 'desc'
                     }
                 })
-        
+
                 if (latestMilage && latestMilage.mileage > parseInt(mileage, 10)) {
                     return res.status(400).json({ error_code: 400, msg: 'Cannot decrease mileage.' });
                 }
@@ -139,20 +286,20 @@ class Job  {
                 data
             })
 
-            
-
             res.status(201).json({data: job, msg: "Job created successfully."});
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not create job.' });
+            console.error("Error creating job:", error); // Added more specific error logging
+            res.status(500).json({ error_code: 500, msg: 'Could not create job.' }); // Changed to 500 for internal server error
         }
     }
-
+    
     async getJobs (req: Request, res: Response) {
         const customerID = req.query.customerID ? req.query.customerID as string : (req.params.customerID ? req.params.customerID as string : null);
         const page = Number(req.query.page) || undefined;
         const limit = Number(req.query.limit) || undefined;
         const filterValue = req.query?.filter as string || null;
         const status = req.query?.status as string || null;
+        const jobTypeID = req.query.job_type_id ? req.query.job_type_id as string : null; // New filter parameter
         const startDatetime = req.body?.start;
         const endDatetime = req.body?.end;
 
@@ -171,6 +318,11 @@ class Job  {
             return res.status(400).json({ error_code: 400, msg: 'Invalid start or end datetime format.' });
         }
 
+        // Add job type filter to the where clause
+        if (jobTypeID && !isNaN(parseInt(jobTypeID, 10))) {
+            whereFilter.jobTypeID = parseInt(jobTypeID, 10);
+        }
+
         if (filterValue) {
             const jobTypeID = await db.jobType.findFirst({
                 where: {
@@ -183,7 +335,10 @@ class Job  {
 
             const customerIDs = await db.customer.findMany({
                 where: {
-                    firstName: { contains: filterValue }
+                    OR: [
+                        { firstName: { contains: filterValue } },
+                        { lastName: { contains: filterValue } }, 
+                    ]
                 },
             })
 
@@ -322,7 +477,7 @@ class Job  {
                 updatedAt: true,
                 },
                 orderBy: {
-                id: 'asc',
+                id: 'desc',
                 },
                 skip: (page - 1) * limit, // Calculate the offset
                 take: limit, // Limit the number of items per page
@@ -409,9 +564,9 @@ class Job  {
             res.status(400).json({ error_code: 400, msg: 'Could not get jobs.' });
         }
     }
-          
+    
 
-    async getJob (req: Request, res: Response) {
+    async getJob(req: Request, res: Response) {
         const { id } = req.params;
         try {
             const job = await db.job.findUnique({
@@ -422,15 +577,15 @@ class Job  {
                     status: true,
                     jobType: {
                         select: {
-                            name: true
-                        }
+                            name: true,
+                        },
                     },
                     customerID: true,
                     customer: {
                         select: {
                             firstName: true,
-                            lastName: true
-                        }
+                            lastName: true,
+                        },
                     },
                     vehicleID: true,
                     vehicle: {
@@ -439,17 +594,22 @@ class Job  {
                             modelName: true,
                             licensePlate: true,
                             chasisNo: true,
-                        }
+                        },
                     },
                     deliveryDate: true,
                     createdAt: true,
-                    updatedAt: true
-                }
+                    updatedAt: true,
+                    // Add the new fields here
+                    customerIssue: true,
+                    technician: true,
+                    supervisor: true,
+                    receptionDate: true,
+                },
             });
             if (!job) {
                 return res.status(404).json({ error_code: 404, msg: 'Job not found.' });
             }
-            res.status(200).json({data: job});
+            res.status(200).json({ data: job });
         } catch (error) {
             res.status(400).json({ error_code: 400, msg: 'Could not get job.' });
         }
@@ -513,6 +673,354 @@ class Job  {
 
         } catch (error) {
             res.status(500).json({error_code: 500, msg: "Internal server error."})
+        }
+    }
+
+    async batchUpdateJobStatus(req: Request, res: Response) {
+        const { jobIds, status } = req.body;
+
+        // 1. Validate input
+        if (!jobIds || !Array.isArray(jobIds) || jobIds.length === 0) {
+            return res.status(400).json({ error_code: 400, msg: 'Missing or invalid jobIds array.' });
+        }
+        if (!status || !isValidJobStatus(status)) {
+            return res.status(400).json({ error_code: 400, msg: `Invalid status provided. Accepted values are: ${Object.values(JobStatus).join(', ')}` });
+        }
+
+        // Ensure all IDs are valid integers
+        const validJobIds = jobIds.map((id: any) => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+
+        if (validJobIds.length !== jobIds.length) {
+            return res.status(400).json({ error_code: 400, msg: 'One or more job IDs are invalid.' });
+        }
+
+        try {
+            // 2. Perform the batch update using Prisma's updateMany
+            const updateResult = await db.job.updateMany({
+                where: {
+                    id: {
+                        in: validJobIds,
+                    },
+                },
+                data: {
+                    status: status as JobStatus,
+                },
+            });
+
+            // 3. Respond with success
+            res.status(200).json({
+                data: {
+                    count: updateResult.count,
+                    jobIds: validJobIds,
+                    newStatus: status
+                },
+                msg: `${updateResult.count} job(s) updated successfully.`
+            });
+
+        } catch (error) {
+            console.error("Error during batch job status update:", error);
+            res.status(500).json({ error_code: 500, msg: 'Internal server error during batch update.' });
+        }
+    }
+
+    /*
+    async getJobsWithMaterials(req: Request, res: Response) {
+        const customerID = req.query.customerID ? req.query.customerID as string : (req.params.customerID ? req.params.customerID as string : null);
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
+        const filterValue = req.query?.filter as string || null;
+        const status = req.query?.status as string || null;
+        const jobTypeID = req.query.job_type_id ? req.query.job_type_id as string : null;
+
+        const whereFilter: Prisma.JobWhereInput = {};
+
+        try {
+            // Validate customerID
+            if (customerID && isNaN(parseInt(customerID, 10))) {
+                return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
+            }
+
+            // Add job type filter
+            if (jobTypeID && !isNaN(parseInt(jobTypeID, 10))) {
+                whereFilter.jobTypeID = parseInt(jobTypeID, 10);
+            }
+
+            // Add status filter
+            if (status && Object.values(JobStatus).some(s => status.toLowerCase().includes(s.toLowerCase()))) {
+                whereFilter.status = {
+                    in: Object.values(JobStatus).filter(s => status.toLowerCase().includes(s.toLowerCase())) as JobStatus[]
+                };
+            }
+
+            // Add filterValue conditions
+            if (filterValue) {
+                const orConditions: Prisma.JobWhereInput[] = [];
+
+                // Search for job type
+                const jobType = await db.jobType.findFirst({
+                    where: { name: { contains: filterValue } }, // MySQL is case-sensitive by default
+                    select: { id: true }
+                });
+
+                // Search for customers
+                const customers = await db.customer.findMany({
+                    where: {
+                        OR: [
+                            { firstName: { contains: filterValue } },
+                            { lastName: { contains: filterValue } },
+                        ]
+                    },
+                    select: { id: true }
+                });
+
+                // Search for vehicles
+                const vehicles = await db.vehicle.findMany({
+                    where: { licensePlate: { contains: filterValue } },
+                    select: { id: true }
+                });
+
+                // Build OR conditions
+                if (vehicles.length > 0) {
+                    orConditions.push({ vehicleID: { in: vehicles.map(v => v.id) } });
+                }
+                if (customers.length > 0) {
+                    orConditions.push({ customerID: { in: customers.map(c => c.id) } });
+                }
+                if (!isNaN(parseInt(filterValue, 10))) {
+                    orConditions.push({ id: { equals: parseInt(filterValue, 10) } });
+                }
+                if (jobType) {
+                    orConditions.push({ jobTypeID: { equals: jobType.id } });
+                }
+
+                // Apply OR conditions only if there are any
+                if (orConditions.length > 0) {
+                    if (customerID) {
+                        whereFilter.AND = [
+                            { OR: orConditions },
+                            { customerID: { equals: parseInt(customerID, 10) } },
+                        ];
+                    } else {
+                        whereFilter.OR = orConditions;
+                    }
+                }
+            }
+
+            const finalFilter: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, whereFilter] } : whereFilter;
+
+            // Define the query structure
+            const queryArgs: Prisma.JobFindManyArgs = {
+                where: finalFilter,
+                include: {
+                    customer: { select: { firstName: true, lastName: true } },
+                    vehicle: { select: { modelName: true, modelNo: true, licensePlate: true } },
+                    jobType: { select: { name: true } },
+                    invoice: {
+                        select: {
+                            id: true,
+                            materials: {
+                                select: {
+                                    id: true,
+                                    quantity: true,
+                                    price: true,
+                                    jobMaterial: {
+                                        select: {
+                                            id: true,
+                                            productName: true
+                                        }
+                                    }
+                                },
+                                where: {
+                                    jobMaterialID: { not: undefined }, // Filter out null jobMaterialID
+                                    jobMaterial: { is: { id: { not: undefined } } } // Ensure jobMaterial exists
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { id: 'asc' }
+            };
+
+            // Execute query with or without pagination
+            let jobs;
+            const totalCount = await db.job.count({ where: finalFilter });
+
+            if (page !== undefined && limit !== undefined) {
+                jobs = await db.job.findMany({
+                    ...queryArgs,
+                    skip: (page - 1) * limit,
+                    take: limit,
+                });
+
+                const isLastPage = (page * limit) >= totalCount || jobs.length < limit;
+                res.status(200).json({ data: jobs, totalCount, isLastPage });
+            } else {
+                jobs = await db.job.findMany(queryArgs);
+                res.status(200).json({ data: jobs, totalCount, msg: "Jobs with materials fetched successfully!" });
+            }
+        } catch (error) {
+            console.error("Error in getJobsWithMaterials:", {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                queryParams: { customerID, page, limit, filterValue, status, jobTypeID }
+            });
+            res.status(500).json({ error_code: 500, msg: 'Could not get jobs with materials.' });
+        }
+    }
+    */
+    
+    async getJobsWithMaterials(req: Request, res: Response) {
+        const customerID = req.query.customerID ? req.query.customerID as string : (req.params.customerID ? req.params.customerID as string : null);
+        const page = Number(req.query.page) || undefined;
+        const limit = Number(req.query.limit) || undefined;
+        const filterValue = req.query?.filter as string || null;
+        const status = req.query?.status as string || null;
+        const jobTypeID = req.query.job_type_id ? req.query.job_type_id as string : null;
+
+        const whereFilter: Prisma.JobWhereInput = {};
+
+        try {
+            // Validate customerID
+            if (customerID && isNaN(parseInt(customerID, 10))) {
+                return res.status(400).json({ error_code: 400, msg: 'Invalid customer ID.' });
+            }
+
+            // Add job type filter
+            if (jobTypeID && !isNaN(parseInt(jobTypeID, 10))) {
+                whereFilter.jobTypeID = parseInt(jobTypeID, 10);
+            }
+
+            // Add status filter
+            if (status && Object.values(JobStatus).some(s => status.toLowerCase().includes(s.toLowerCase()))) {
+                whereFilter.status = {
+                    in: Object.values(JobStatus).filter(s => status.toLowerCase().includes(s.toLowerCase())) as JobStatus[]
+                };
+            }
+
+            // Add filterValue conditions
+            if (filterValue) {
+                const orConditions: Prisma.JobWhereInput[] = [];
+
+                // Search for job type
+                const jobType = await db.jobType.findFirst({
+                    where: { name: { contains: filterValue } }, // MySQL is case-sensitive by default
+                    select: { id: true }
+                });
+
+                // Search for customers
+                const customers = await db.customer.findMany({
+                    where: {
+                        OR: [
+                            { firstName: { contains: filterValue } },
+                            { lastName: { contains: filterValue } },
+                        ]
+                    },
+                    select: { id: true }
+                });
+
+                // Search for vehicles
+                const vehicles = await db.vehicle.findMany({
+                    where: { licensePlate: { contains: filterValue } },
+                    select: { id: true }
+                });
+
+                // Build OR conditions
+                if (vehicles.length > 0) {
+                    orConditions.push({ vehicleID: { in: vehicles.map(v => v.id) } });
+                }
+                if (customers.length > 0) {
+                    orConditions.push({ customerID: { in: customers.map(c => c.id) } });
+                }
+                if (!isNaN(parseInt(filterValue, 10))) {
+                    orConditions.push({ id: { equals: parseInt(filterValue, 10) } });
+                }
+                if (jobType) {
+                    orConditions.push({ jobTypeID: { equals: jobType.id } });
+                }
+
+                // Apply OR conditions only if there are any
+                if (orConditions.length > 0) {
+                    if (customerID) {
+                        whereFilter.AND = [
+                            { OR: orConditions },
+                            { customerID: { equals: parseInt(customerID, 10) } },
+                        ];
+                    } else {
+                        whereFilter.OR = orConditions;
+                    }
+                }
+            }
+
+            const finalFilter: Prisma.JobWhereInput = customerID ? { AND: [{ customerID: parseInt(customerID, 10) }, whereFilter] } : whereFilter;
+
+            // Define the query structure
+            const queryArgs: Prisma.JobFindManyArgs = {
+                where: finalFilter,
+                select: {
+                    id: true,
+                    customerID: true,
+                    vehicleID: true,
+                    jobTypeID: true,
+                    deliveryDate: true,
+                    customerIssue: true, // Include customerIssue field
+                    status: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    customer: { select: { firstName: true, lastName: true } },
+                    vehicle: { select: { modelName: true, modelNo: true, licensePlate: true } },
+                    jobType: { select: { name: true } },
+                    invoice: {
+                        select: {
+                            id: true,
+                            materials: {
+                                select: {
+                                    id: true,
+                                    quantity: true,
+                                    price: true,
+                                    jobMaterial: {
+                                        select: {
+                                            id: true,
+                                            productName: true
+                                        }
+                                    }
+                                },
+                                where: {
+                                    AND: [
+                                        { jobMaterialID: { not: undefined } }, // Filter out null jobMaterialID
+                                        { jobMaterial: { is: { id: { not: undefined } } } } // Ensure jobMaterial exists
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            };
+
+            // Execute query with or without pagination
+            let jobs;
+            const totalCount = await db.job.count({ where: finalFilter });
+
+            if (page !== undefined && limit !== undefined) {
+                jobs = await db.job.findMany({
+                    ...queryArgs,
+                    skip: (page - 1) * limit,
+                    take: limit,
+                });
+
+                const isLastPage = (page * limit) >= totalCount || jobs.length < limit;
+                res.status(200).json({ data: jobs, totalCount, isLastPage });
+            } else {
+                jobs = await db.job.findMany(queryArgs);
+                res.status(200).json({ data: jobs, totalCount, msg: "Jobs with materials fetched successfully!" });
+            }
+        } catch (error) {
+            console.error("Error in getJobsWithMaterials:", {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined,
+                queryParams: { customerID, page, limit, filterValue, status, jobTypeID }
+            });
+            res.status(500).json({ error_code: 500, msg: 'Could not get jobs with materials.' });
         }
     }
 

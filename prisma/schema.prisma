@@ -154,6 +154,13 @@ model Job {
   jobType       JobType        @relation(fields: [jobTypeID], references: [id])
   jobTypeID     Int
   deliveryDate  DateTime?
+
+  // New fields added as requested
+  customerIssue String?        @db.Text // Text field for customer issue
+  technician    String?        @db.Text // Text field for technician name
+  supervisor    String?        @db.Text // Text field for supervisor name
+  receptionDate DateTime?      
+
   status        JobStatus      @default(NOT_STARTED)
   invoice       Invoice?
   invoiceDrafts InvoiceDraft[]

@@ -84,63 +84,58 @@ class EstimateController {
                 console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
-            let materialIDs, jobMaterials = [];
+            let materialSubTotal = 0;
             if (materials) {
-                if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
-                materialIDs = convertStringToObjectArray(materials)
+                if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use id:qty:price.' });
+                
+                // This now returns [{ id, qty, price }]
+                const materialIDs = convertStringToObjectArray(materials); 
 
-                let subTotal = 0
+                // Verify all materials exist in one DB call
+                const foundMaterials = await db.jobMaterial.findMany({ 
+                    where: { id: { in: materialIDs.map(m => m.id) } } 
+                });
+                if (foundMaterials.length !== materialIDs.length) {
+                    return res.status(404).json({ error_code: 404, msg: 'One or more materials not found.' });
+                }
+
+                // Calculate subtotal using the price from the request
                 for (const item of materialIDs) {
-                    const { id, qty } = item
-                    const jobMaterial = await db.jobMaterial.findUnique({ where: { id } })
-                    if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
-                    jobMaterials.push(jobMaterial)
-                    const productCostNumber = parseFloat(jobMaterial.productCost.toString());
-                    const itemTotal = productCostNumber * qty;
-                    subTotal += itemTotal;
-                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal)
+                    materialSubTotal += item.price * item.qty;
                 }
 
                 if (discount) {
-                    if (discount_type == "AMOUNT") {
-                        subTotal -= parseFloat(discount);
-                        if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
-                        console.log("discount", "curr", subTotal, "disc", discount)
+                    let discountAmount = 0;
+                    if (discount_type === "AMOUNT") {
+                        discountAmount = parseFloat(discount);
+                    } else { // PERCENTAGE
+                        discountAmount = materialSubTotal * (parseFloat(discount) / 100);
                     }
-                    if (discount_type == "PERCENTAGE") {
-                        if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
-                        const discountFloat = parseFloat(discount);
-                        subTotal -= subTotal * (discountFloat / 100);
-                        console.log("discount", "curr", subTotal, "disc", discount, "val", discountFloat)
+                    if (discountAmount > materialSubTotal) {
+                        return res.status(400).json({ error_code: 400, msg: 'Discount cannot be greater than the materials subtotal.' });
                     }
-
-                    data["discount"] = parseFloat(discount)
-                    data["discountType"] = discount_type
+                    materialSubTotal -= discountAmount;
+                    data["discount"] = parseFloat(discount);
+                    data["discountType"] = discount_type;
                 }
-
-                total += subTotal
-                console.log("curr", total)
             }
 
-
+            total += materialSubTotal;
             data["amount"] = total.toFixed(2)
 
 
-            const estimate = await db.estimate.create({
-                data
-            })
+            const estimate = await db.estimate.create({ data });
 
-            if (estimate && jobMaterials) {
-                for (const mat of jobMaterials) {
-                    await db.estimateJobMaterial.create({
-                        data: {
-                            estimateID: estimate.id,
-                            jobMaterialID: mat.id,
-                            quantity: materialIDs?.find((item: any) => item.id == mat.id)?.qty,
-                            price: mat.productCost
-                        }
-                    })
-                }
+            // Efficiently create all material records
+            if (estimate && materials) {
+                const materialIDs = convertStringToObjectArray(materials);
+                const estimateMaterialsData = materialIDs.map(mat => ({
+                    estimateID: estimate.id,
+                    jobMaterialID: mat.id,
+                    quantity: mat.qty,
+                    price: mat.price // Save the user-edited price
+                }));
+                await db.estimateJobMaterial.createMany({ data: estimateMaterialsData });
             }
 
             res.status(201).json({ data: estimate, msg: "Estimate created successfully." });
@@ -155,14 +150,21 @@ class EstimateController {
         const filterValue = req.query?.filter as string || null;
         const page = Number(req.query.page) || undefined;
         const limit = Number(req.query.limit) || undefined;
+
+        //changes
+        const startDate = req.query?.startDate as string | null;
+        const endDate = req.query?.endDate as string | null;
+        const companyName = req.query?.companyName as string || null;
+
         const whereFilter: Prisma.EstimateWhereInput = {};
 
         if (filterValue) {
             const customerIDs = await db.customer.findMany({
                 where: {
                     OR: [
-                        { companyName: { contains: filterValue } },
-                        { firstName: { contains: filterValue } },
+                        { companyName: { contains: filterValue, } },
+                        { firstName: { contains: filterValue, } },
+                        { lastName: { contains: filterValue,} },
                     ]
                 },
                 select: {
@@ -205,6 +207,28 @@ class EstimateController {
             }
         }
 
+        // Add filtering by date range
+        if (startDate || endDate) {
+            whereFilter.createdAt = {};
+            if (startDate) {
+                whereFilter.createdAt.gte = new Date(startDate);
+            }
+            if (endDate) {
+                // Ensure the end date includes the whole day
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                whereFilter.createdAt.lte = end;
+            }
+        }
+        
+        // Add filtering by company name
+        if (companyName) {
+            whereFilter.customer = {
+                companyName: {
+                    contains: companyName,
+                }
+            };
+        }
 
         try {
             if (page !== undefined && limit !== undefined) {
@@ -436,7 +460,7 @@ class EstimateController {
                 console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
             }
 
-            if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty,id:qty.' });
+            if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty:price.' });
 
             const updateJobMaterials = convertStringToObjectArray(materials);
 
@@ -455,7 +479,9 @@ class EstimateController {
                 const jobMaterialEstimate = await db.estimateJobMaterial.findFirst({
                     where: { AND: { jobMaterialID: jobMaterial.id, estimateID: parseInt(id, 10) } },
                 });
-                let price = jobMaterialFind.productCost;
+
+                let price = jobMaterial.price;
+
                 if (jobMaterialEstimate) {
                     await db.estimateJobMaterial.update({
                         where: { id: jobMaterialEstimate.id },
@@ -471,7 +497,7 @@ class EstimateController {
                         },
                     });
                 }
-                const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
+                const productCostNumber = parseFloat(price.toString());
                 subTotal += productCostNumber * jobMaterial.qty;
                 console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal", productCostNumber * jobMaterial.qty)
             }
@@ -481,7 +507,7 @@ class EstimateController {
             if (discount) {
                 if (discount_type == "AMOUNT") {
                     subTotal -= parseFloat(discount)
-                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount cannot be greater than the materials subtotal.' });
                 }
                 if (discount_type == "PERCENTAGE") {
                     if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });

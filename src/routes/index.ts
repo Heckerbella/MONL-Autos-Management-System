@@ -79,11 +79,23 @@ jobRouter.post('/', auth.auth, jobController.job.createJob)
 jobRouter.get('/', auth.auth, jobController.job.getJobs)
 jobRouter.post('/report', auth.auth, jobController.job.getJobs)
 jobRouter.get('/types', auth.auth, jobController.job.getJobTypes)
-jobRouter.post('/types', auth.auth, jobController.job.createJobType) //NEW ROUTE 
+jobRouter.post('/types', auth.auth, jobController.job.createJobType)
+jobRouter.patch('/batch-status-update', jobController.job.batchUpdateJobStatus)
+jobRouter.get('/report-with-materials', jobController.job.getJobsWithMaterials)
 jobRouter.get('/:id', auth.auth, jobController.job.getJob)
 jobRouter.put('/:id', auth.auth, jobController.job.updateJob)
 jobRouter.delete('/:id', auth.auth, jobController.job.deleteJob)
 
+
+
+// Job Type Section (NEW SECTION)
+const jobTypeRouter = express.Router();
+router.use('/job-types', jobTypeRouter);
+jobTypeRouter.post('/', auth.auth, jobController.job.createJobType)
+jobTypeRouter.get('/', auth.auth, jobController.job.getJobTypes)
+jobTypeRouter.get('/:id', auth.auth, jobController.job.getJobTypeById) // Requires new controller method
+jobTypeRouter.put('/:id', auth.auth, jobController.job.updateJobType) // Requires new controller method
+jobTypeRouter.delete('/:id', auth.auth, jobController.job.deleteJobType) // Requires new controller method
 
 // Invoice Section
 const invoiceRouter = express.Router();

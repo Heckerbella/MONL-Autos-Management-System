@@ -7,8 +7,23 @@ export function isValidDiscountType(type: string) {
     return Object.values(DiscountType).includes(type as DiscountType);
 }
 
+/*
 export function isValidString(inputString: string) {
     const pattern = /^((\d+:\d+(?:,|$))+)?$/;
+    return pattern.test(inputString);
+}
+*/
+
+export function isValidString(inputString: string) {
+    // Handle the valid case of an empty string (no materials)
+    if (inputString.trim() === '') {
+        return true;
+    }
+
+    // This updated pattern validates a comma-separated list of "id:qty:price".
+    // It correctly handles numbers with or without decimals for the price.
+    const pattern = /^(\d+:\d+:\d+(\.\d{1,2})?)(,\d+:\d+:\d+(\.\d{1,2})?)*$/;
+
     return pattern.test(inputString);
 }
 
@@ -47,7 +62,7 @@ export function compareArrays<T extends { id: number, qty?: number, jobMaterialI
     };
 }
 
-
+/*
 export function convertStringToObjectArray(inputString: string) {
     if (!isValidString(inputString)) {
         throw new Error('Invalid input string format');
@@ -57,6 +72,28 @@ export function convertStringToObjectArray(inputString: string) {
     const objArray = inputString.split(',').map((item: string) => {
         const [id, qty] = item.split(':');
         return { id: parseInt(id), qty: parseInt(qty) };
+    });
+
+    return objArray;
+}
+*/
+export function convertStringToObjectArray(inputString: string) {
+    if (!isValidString(inputString)) {
+        throw new Error('Invalid input string format');
+    }
+
+    if (inputString.length === 0) return [];
+
+    const objArray = inputString.split(',').map((item: string) => {
+        // MODIFICATION: Destructure 'price' as the third item
+        const [id, qty, price] = item.split(':');
+        
+        // MODIFICATION: Return an object that includes the parsed price
+        return { 
+            id: parseInt(id), 
+            qty: parseInt(qty),
+            price: parseFloat(price) // Use parseFloat for decimal values
+        };
     });
 
     return objArray;
@@ -99,6 +136,8 @@ class InvoiceController {
             paid,
             draft_id
         } = req.body
+
+        console.log(req.body);
 
         if (
             !job_type_id ||
@@ -173,15 +212,20 @@ class InvoiceController {
 
                 let subTotal = 0
                 for (const item of materialIDs) {
-                    const { id, qty } = item
+                    // ⬇️ MODIFICATION: Destructure 'price' from the item
+                    const { id, qty, price } = item
                     const jobMaterial = await db.jobMaterial.findUnique({ where: { id } })
                     if (!jobMaterial) return res.status(404).json({ error_code: 404, msg: 'Material not found.' });
-                    jobMaterials.push(jobMaterial)
-                    const productCostNumber = parseFloat(jobMaterial.productCost.toString());
-                    const itemTotal = productCostNumber * qty;
+                    
+                    // ⬇️ MODIFICATION: Push an object with the submitted price to jobMaterials
+                    jobMaterials.push({ ...jobMaterial, submittedPrice: price });
+
+                    // ⬇️ MODIFICATION: Use the submitted price for calculation, not the DB price
+                    const itemTotal = price * qty;
                     subTotal += itemTotal;
-                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", productCostNumber, "qty", qty, "itemTotal", itemTotal)
+                    console.log("adding", "curr", subTotal, jobMaterial.productName, "price", price, "qty", qty, "itemTotal", itemTotal)
                 }
+
                 if (discount) {
                     if (discount_type == "AMOUNT") {
                         subTotal -= parseFloat(discount);
@@ -225,7 +269,7 @@ class InvoiceController {
                             invoiceID: invoice.id,
                             jobMaterialID: mat.id,
                             quantity: materialIDs?.find((item) => item.id == mat.id)?.qty,
-                            price: mat.productCost
+                            price: mat.submittedPrice
                         }
                     })
                 }
@@ -240,184 +284,105 @@ class InvoiceController {
         }
     }
 
-
     async getInvoices(req: Request, res: Response) {
-        const filterValue = req.query?.filter as string || null;
-        const paid = req.query?.paid as string || null;
+        // Extract and type-cast query parameters
+        const filterValue = req.query?.filter as string;
+        const paid = req.query?.paid as string;
         const page = Number(req.query.page) || undefined;
         const limit = Number(req.query.limit) || undefined;
+        const startDate = req.query?.startDate as string;
+        const endDate = req.query?.endDate as string;
+        const companyName = req.query?.companyName as string;
+
         const whereFilter: Prisma.InvoiceWhereInput = {};
+        const combinedFilter: Prisma.InvoiceWhereInput[] = [];
 
+        // Combine all filters into a single structure
         if (filterValue) {
-            const customerIDs = await db.customer.findMany({
-                where: {
-                    OR: [
-                        { companyName: { contains: filterValue } },
-                        { firstName: { contains: filterValue } },
-                    ]
-                },
-                select: {
-                    id: true
-                }
-            });
+            const parsedFilterValue = parseInt(filterValue, 10);
+            const isNumericFilter = !isNaN(parsedFilterValue);
 
-            const vehicleIDs = await db.vehicle.findMany({
-                where: {
-                    OR: [
-                        { licensePlate: { contains: filterValue } },
-                        { modelName: { contains: filterValue } },
-                    ]
-                },
-                select: {
-                    id: true
-                }
-            });
-
-            const customerIDArray = customerIDs.map((customer) => customer.id);
-            const vehicleIDArray = vehicleIDs.map((vehicle) => vehicle.id);
-
-            if (!isNaN(Number(filterValue))) {
-                try {
-                    const parsedFilterValue = parseInt(filterValue);
-                    whereFilter.OR = [
-                        { customerID: { in: customerIDArray } },
-                        { vehicleID: { in: vehicleIDArray } },
-                        { invoiceNo: { equals: parsedFilterValue } },
-                    ];
-                } catch {
-                    // Ignore parsing errors and continue with the existing whereFilter
-                }
-            } else {
-                whereFilter.OR = [
-                    { customerID: { in: customerIDArray } },
-                    { vehicleID: { in: vehicleIDArray } }
+            // General filter for customer and vehicle data
+            combinedFilter.push({
+                OR: [
+                    { customer: { OR: [{ companyName: { contains: filterValue, } }, { firstName: { contains: filterValue, } }, { lastName: { contains: filterValue,  } }] } },
+                    { vehicle: { OR: [{ licensePlate: { contains: filterValue,  } }, { modelName: { contains: filterValue,  } }] } },
+                    ...(isNumericFilter ? [{ invoiceNo: { equals: parsedFilterValue } }] : []),
                 ]
-            }
-
+            });
+        }
+        
+        if (companyName) {
+            combinedFilter.push({ customer: { companyName: { contains: companyName, } } });
         }
 
-        if (paid !== null && (paid.toLowerCase() === 'true' || paid.toLowerCase() === 'false')) {
-            whereFilter.paid = paid.toLowerCase() === 'true'
+        if (paid !== undefined && (paid.toLowerCase() === 'true' || paid.toLowerCase() === 'false')) {
+            combinedFilter.push({ paid: paid.toLowerCase() === 'true' });
+        }
+
+        if (startDate || endDate) {
+            const dateFilter: Prisma.DateTimeFilter = {};
+            if (startDate) {
+                dateFilter.gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                dateFilter.lte = end;
+            }
+            combinedFilter.push({ createdAt: dateFilter });
+        }
+        
+        if (combinedFilter.length > 0) {
+            whereFilter.AND = combinedFilter;
         }
 
         try {
-            if (page !== undefined && limit !== undefined) {
-                let totalCount = await db.invoice.count({ where: whereFilter });
-                const invoices = await db.invoice.findMany({
-                    where: whereFilter,
-                    select: {
-                        id: true,
-                        invoiceNo: true,
-                        paid: true,
-                        description: true,
-                        serviceCharge: true,
-                        createdAt: true,
-                        dueDate: true,
-                        materials: true,
-                        vat: true,
-                        job: true,
-                        discount: true,
-                        amount: true,
-                        discountType: true,
-                        customerID: true,
-                        createdBy: {
-                            select: {
-                                id: true,
-                                email: true
-                            }
-                        },
-                        updatedBy: {
-                            select: {
-                                id: true,
-                                email: true
-                            }
-                        },
-                        customer: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true,
-                                phone: true,
-                                companyName: true,
-                                companyContact: true,
-                            }
-                        },
-                        vehicleID: true,
-                        vehicle: {
-                            select: {
-                                modelNo: true,
-                                modelName: true,
-                                licensePlate: true,
-                            }
-                        },
-                    },
-                    orderBy: {
-                        createdAt: 'desc'
-                    },
-                    skip: (page - 1) * limit,
-                    take: limit,
-                });
+            const totalCount = await db.invoice.count({ where: whereFilter });
 
-                const isLastPage = invoices.length < limit;
-                res.status(200).json({ data: invoices, totalCount, isLastPage, msg: "Invoices retrieved successfully." });
-            } else {
-                const invoices = await db.invoice.findMany({
-                    where: whereFilter,
-                    select: {
-                        id: true,
-                        invoiceNo: true,
-                        paid: true,
-                        description: true,
-                        createdAt: true,
-                        dueDate: true,
-                        materials: true,
-                        vat: true,
-                        job: true,
-                        discount: true,
-                        amount: true,
-                        discountType: true,
-                        customerID: true,
-                        createdBy: {
-                            select: {
-                                id: true,
-                                email: true
-                            }
-                        },
-                        updatedBy: {
-                            select: {
-                                id: true,
-                                email: true
-                            }
-                        },
-                        customer: {
-                            select: {
-                                firstName: true,
-                                lastName: true,
-                                email: true,
-                                phone: true,
-                                companyName: true,
-                                companyContact: true,
-                            }
-                        },
-                        vehicleID: true,
-                        vehicle: {
-                            select: {
-                                modelNo: true,
-                                modelName: true,
-                                licensePlate: true,
-                            }
-                        },
-                    },
-                    orderBy: {
-                        createdAt: 'desc'
-                    }
-                });
-                res.status(200).json({ data: invoices, msg: "Invoices retrieved successfully." });
+            const findManyOptions: Prisma.InvoiceFindManyArgs = {
+                where: whereFilter,
+                select: {
+                    id: true,
+                    invoiceNo: true,
+                    paid: true,
+                    description: true,
+                    serviceCharge: true,
+                    createdAt: true,
+                    dueDate: true,
+                    materials: true,
+                    vat: true,
+                    job: true,
+                    discount: true,
+                    amount: true,
+                    discountType: true,
+                    customerID: true,
+                    createdBy: { select: { id: true, email: true } },
+                    updatedBy: { select: { id: true, email: true } },
+                    customer: { select: { firstName: true, lastName: true, email: true, phone: true, companyName: true, companyContact: true } },
+                    vehicleID: true,
+                    vehicle: { select: { modelNo: true, modelName: true, licensePlate: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            };
+
+            if (page !== undefined && limit !== undefined) {
+                findManyOptions.skip = (page - 1) * limit;
+                findManyOptions.take = limit;
             }
+
+            const invoices = await db.invoice.findMany(findManyOptions);
+
+            const isLastPage = (page !== undefined && limit !== undefined) ? invoices.length < limit : true;
+
+            res.status(200).json({ data: invoices, totalCount, isLastPage, msg: "Invoices retrieved successfully." });
+
         } catch (error) {
-            res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices.' });
+            console.error("Error retrieving invoices:", error);
+            res.status(400).json({ error_code: 400, msg: 'Could not retrieve invoices due to an error.' });
         }
     }
+
 
     async getInvoice(req: Request, res: Response) {
         const { id } = req.params;
@@ -597,7 +562,10 @@ class InvoiceController {
                 const jobMaterialInvoice = await db.invoiceJobMaterial.findFirst({
                     where: { AND: { jobMaterialID: jobMaterial.id, invoiceID: parseInt(id, 10) } },
                 });
-                let price = jobMaterialFind.productCost;
+
+                // ⬇️ MODIFICATION: Use the price from the request payload.
+                let price = jobMaterial.price;
+
                 if (jobMaterialInvoice) {
                     await db.invoiceJobMaterial.update({
                         where: { id: jobMaterialInvoice.id },
@@ -613,9 +581,9 @@ class InvoiceController {
                         },
                     });
                 }
-                const productCostNumber = parseFloat(jobMaterialFind.productCost.toString());
-                subTotal += productCostNumber * jobMaterial.qty;
-                console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", productCostNumber, "qty", jobMaterial.qty, "itemTotal", productCostNumber * jobMaterial.qty)
+                // ⬇️ MODIFICATION: Use the submitted price for subtotal calculation.
+                subTotal += price * jobMaterial.qty;
+                console.log("adding", "curr", subTotal, jobMaterialFind.productName, "price", price, "qty", jobMaterial.qty, "itemTotal", price * jobMaterial.qty)
             }
 
             await db.invoiceJobMaterial.deleteMany({ where: { invoiceID: parseInt(id, 10), NOT: { jobMaterialID: { in: updateJobMaterials.map(material => material.id) } } } })
@@ -623,7 +591,7 @@ class InvoiceController {
             if (discount) {
                 if (discount_type == "AMOUNT") {
                     subTotal -= parseFloat(discount)
-                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount amount is greater than service charge.' });
+                    if (subTotal < 0) return res.status(400).json({ error_code: 400, msg: 'Discount cannot be greater than the materials subtotal.' });
                 }
                 if (discount_type == "PERCENTAGE") {
                     if (subTotal == 0) return res.status(400).json({ error_code: 400, msg: 'Cannot apply a percentage discount when no service charge is applied.' });
