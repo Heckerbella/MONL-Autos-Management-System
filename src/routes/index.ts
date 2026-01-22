@@ -105,6 +105,7 @@ invoiceRouter.get('/', auth.auth, invoiceController.getInvoices)
 invoiceRouter.get('/:id', auth.auth, invoiceController.getInvoice)
 invoiceRouter.put('/:id', auth.auth, invoiceController.updateInvoice)
 invoiceRouter.delete('/:id', auth.auth, invoiceController.deleteInvoice)
+invoiceRouter.patch('/batch-paid', auth.auth, invoiceController.markBatchAsPaid)
 
 
 // Invoice Section

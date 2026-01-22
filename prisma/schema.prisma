@@ -227,7 +227,7 @@ model InvoiceJobMaterial {
   id            Int         @id @default(autoincrement())
   invoice       Invoice     @relation(fields: [invoiceID], references: [id], onDelete: Cascade)
   invoiceID     Int
-  jobMaterial   JobMaterial @relation(fields: [jobMaterialID], references: [id])
+  jobMaterial   JobMaterial? @relation(fields: [jobMaterialID], references: [id])
   jobMaterialID Int
   price         Decimal     @default(0) @db.Decimal(10, 2)
   quantity      Int         @default(1)
@@ -239,7 +239,7 @@ model InvoiceDraftJobMaterial {
   id            Int          @id @default(autoincrement())
   draft         InvoiceDraft @relation(fields: [draftID], references: [id], onDelete: Cascade)
   draftID       Int
-  jobMaterial   JobMaterial  @relation(fields: [jobMaterialID], references: [id])
+  jobMaterial   JobMaterial?  @relation(fields: [jobMaterialID], references: [id])
   jobMaterialID Int
   price         Decimal      @default(0) @db.Decimal(10, 2)
   quantity      Int          @default(1)
@@ -251,7 +251,7 @@ model EstimateJobMaterial {
   id            Int         @id @default(autoincrement())
   estimate      Estimate    @relation(fields: [estimateID], references: [id], onDelete: Cascade)
   estimateID    Int
-  jobMaterial   JobMaterial @relation(fields: [jobMaterialID], references: [id])
+  jobMaterial   JobMaterial? @relation(fields: [jobMaterialID], references: [id])
   jobMaterialID Int
   price         Decimal     @default(0) @db.Decimal(10, 2)
   quantity      Int         @default(1)

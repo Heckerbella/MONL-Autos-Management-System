@@ -119,6 +119,28 @@ class InvoiceController {
         }
     }
 
+    // ➕ ADD THIS NEW METHOD
+    async markBatchAsPaid(req: Request, res: Response) {
+        const { ids } = req.body;
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error_code: 400, msg: 'No invoice IDs provided.' });
+        }
+
+        try {
+            // Update all invoices with the provided IDs to paid = true
+            await db.invoice.updateMany({
+                where: { id: { in: ids } },
+                data: { paid: true }
+            });
+
+            res.status(200).json({ msg: "Invoices marked as paid successfully." });
+        } catch (error) {
+            console.error(error);
+            res.status(400).json({ error_code: 400, msg: 'Could not update invoices.' });
+        }
+    }
+
     async createInvoice(req: Request, res: Response) {
         const {
             job_type_id,
@@ -529,17 +551,24 @@ class InvoiceController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            if (vat && total > 0) {
+            // Check if vat is explicitly defined (allows 0 to be valid)
+            if (vat !== undefined && vat !== null && vat !== "") {
                 const vatFloat = parseFloat(vat);
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-            } else if (invoice.vat && total > 0) {
+                data["vat"] = vatFloat; // Updates DB to 0 if vat is 0
+
+                // Only calculate add-on if vat is actually positive
+                if (vatFloat > 0 && total > 0) {
+                    const vatAmount = total * (vatFloat / 100);
+                    total += vatAmount;
+                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount);
+                }
+            } 
+            // Only fall back to old invoice VAT if 'vat' was completely missing from request
+            else if (invoice.vat && total > 0) {
                 const vatFloat = parseFloat(invoice.vat.toString());
                 const vatAmount = total * (vatFloat / 100);
                 total += vatAmount;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount);
             }
 
             if (paid) data['paid'] = paid
@@ -921,6 +950,8 @@ class InvoiceDraft {
             res.status(400).json({ error_code: 400, msg: 'Could not delete draft.' });
         }
     }
+
+    
 }
 
 const invoiceController = new InvoiceController();

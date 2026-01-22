@@ -241,6 +241,7 @@ class EstimateController {
                         estimateNo: true,
                         description: true,
                         createdAt: true,
+                        updatedAt: true,
                         serviceCharge: true,
                         dueDate: true,
                         materials: true,
@@ -269,7 +270,7 @@ class EstimateController {
                         },
                     },
                     orderBy: {
-                        createdAt: 'desc'
+                        updatedAt: 'desc'
                     },
                     skip: (page - 1) * limit,
                     take: limit,
@@ -285,6 +286,7 @@ class EstimateController {
                         estimateNo: true,
                         description: true,
                         createdAt: true,
+                        updatedAt: true,
                         serviceCharge: true,
                         dueDate: true,
                         materials: true,
@@ -313,7 +315,7 @@ class EstimateController {
                         },
                     },
                     orderBy: {
-                        createdAt: 'desc'
+                        updatedAt: 'desc'
                     }
                 });
                 res.status(200).json({ data: estimates, msg: "Estimates retrieved successfully." });
