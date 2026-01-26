@@ -449,17 +449,23 @@ class EstimateController {
             if (discount_type && !isValidDiscountType(discount_type)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount_type.' });
             if (discount_type == "PERCENTAGE" && (parseFloat(discount) < 0 || parseFloat(discount) > 100)) return res.status(400).json({ error_code: 400, msg: 'Invalid discount value. Discount value must be between 0 and 100.' });
 
-            if (vat && total > 0) {
+            if (vat !== undefined && vat !== null && vat !== "") {
                 const vatFloat = parseFloat(vat);
-                const vatAmount = total * (vatFloat / 100);
-                total += vatAmount;
-                data["vat"] = vatFloat;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
-            } else if (estimate.vat && total > 0) {
+                data["vat"] = vatFloat; // Explicitly update VAT in database (even if 0)
+
+                // Only calculate add-on if vat is actually positive
+                if (vatFloat > 0 && total > 0) {
+                    const vatAmount = total * (vatFloat / 100);
+                    total += vatAmount;
+                    console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount);
+                }
+            } 
+            // Only fall back to old estimate VAT if 'vat' was completely missing from request
+            else if (estimate.vat && total > 0) {
                 const vatFloat = parseFloat(estimate.vat.toString());
                 const vatAmount = total * (vatFloat / 100);
                 total += vatAmount;
-                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount)
+                console.log("vat", "curr", total, "vat", vatFloat, "val", vatAmount);
             }
 
             if (!isValidString(materials)) return res.status(400).json({ error_code: 400, msg: 'Incorrect format for materials. Please use the format id:qty:price.' });
